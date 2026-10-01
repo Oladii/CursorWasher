@@ -1,6 +1,6 @@
 # CursorWasher
 
-[English](README.en.md) · [Русский](README.ru.md)
+[English](README.en.md) · [Русский](README.md)
 
 ## Why
 
@@ -9,6 +9,12 @@ Touched something unpleasant with your cursor and now want to give it a good scr
 [Grab the macOS installer](https://github.com/Oladii/CursorWasher/releases/latest/download/CursorWasher-Installer.dmg)
 
 ![Little bucket for washing your cursor](media/cursor-washer.gif)
+
+## How to launch
+
+![macOS warning when opening CursorWasher](https://cdsassets.apple.com/live/7WUAS350/images/macos/sequoia/locale/ru-ru/macos-sequoia-app-not-opened-could-not-verify-free-from-malware.png)
+
+I'm just a country boy, so the bucket doesn't have a Developer ID signature yet, which means macOS will block the downloaded app. [Apple's instructions for allowing it to open](https://support.apple.com/en-ie/102445).
 
 ## What it can do
 
@@ -30,7 +36,7 @@ The installer in the exported project is `App/CursorWasher-Installer.dmg`. Downl
 3. Launch the app from Applications.
 4. Set it to launch at login if you need the bucket often.
 
-Requires macOS 13 or later. Running on Intel has not been tested. I'm just a country boy, so the bucket doesn't have a Developer ID signature yet, which means macOS may block the downloaded app. [Apple's instructions for allowing it to open](https://support.apple.com/en-ie/102445).
+Requires macOS 13 or later. Running on Intel has not been tested.
 
 ## Building
 

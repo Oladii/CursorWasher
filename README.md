@@ -10,6 +10,12 @@
 
 ![Ведёрко для мытья курсора](media/cursor-washer.gif)
 
+## Как запустить
+
+![Предупреждение macOS при запуске CursorWasher](https://cdsassets.apple.com/live/7WUAS350/images/macos/sequoia/locale/ru-ru/macos-sequoia-app-not-opened-could-not-verify-free-from-malware.png)
+
+Я простой сельский парень, поэтому у ведра пока нет подписи Developer ID, а значит macOS заблокирует скачанное приложение. [Инструкция Apple по разрешению запуска](https://support.apple.com/en-ie/102445).
+
 ## Что умеет
 
 - Мыть курсор.
@@ -29,8 +35,6 @@
 2. Перетащите `CursorWasher` в папку `Applications` («Программы») в открывшемся окне.
 3. Запустите приложение из «Программ».
 4. Настройте автозапуск, если ведро нужно часто.
-
-Нужна macOS 13 или новее. Запуск на Intel не проверен. Я простой сельский парень, поэтому у ведра пока нет подписи Developer ID, а значит macOS может заблокировать скачанное приложение. [Инструкция Apple по разрешению запуска](https://support.apple.com/en-ie/102445).
 
 ## Сборка
 
