@@ -4,7 +4,7 @@ APP_BUILD="41"
 APP_MINIMUM_MACOS="13.0"
 APP_IDENTIFIER="local.cursorwash.probe"
 GITHUB_REPOSITORY="Oladii/CursorWasher"
-APP_INSTALLER_FILENAME="Cursor washer Installer.dmg"
+APP_INSTALLER_FILENAME="CursorWasher-Installer.dmg"
 
 APP_RUNTIME_SOURCES=(
   CursorSession WashPlayback BucketLayout WidgetGesture WashClickSequence WashView

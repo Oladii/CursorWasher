@@ -6,7 +6,7 @@
 
 Трогал курсором что-то неприятное, а после хочешь хорошенько помыть его с мылом? Один клик — и курсор как новенький. Чистым курсором снова можно трогать свои файлы и гладить макеты.
 
-[Скорее скачивай установщик для macOS](https://github.com/Oladii/CursorWasher/releases/latest/download/Cursor.washer.Installer.dmg)
+[Скорее скачивай установщик для macOS](https://github.com/Oladii/CursorWasher/releases/latest/download/CursorWasher-Installer.dmg)
 
 ![Ведёрко для мытья курсора](media/cursor-washer.gif)
 
@@ -23,7 +23,7 @@
 
 ## Установка
 
-В чистовом комплекте установщик находится в `App/Cursor washer Installer.dmg`. Скачать установщик можно со [страницы релизов](https://github.com/Oladii/CursorWasher/releases).
+В чистовом комплекте установщик находится в `App/CursorWasher-Installer.dmg`. Скачать установщик можно со [страницы релизов](https://github.com/Oladii/CursorWasher/releases).
 
 1. Откройте DMG.
 2. Перетащите `CursorWasher` в папку `Applications` («Программы») в открывшемся окне.

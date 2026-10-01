@@ -6,7 +6,7 @@
 
 Touched something unpleasant with your cursor and now want to give it a good scrub with soap? One click, and your cursor is as good as new. With a clean cursor, you can touch your own files and pet your designs again.
 
-[Grab the macOS installer](https://github.com/Oladii/CursorWasher/releases/latest/download/Cursor.washer.Installer.dmg)
+[Grab the macOS installer](https://github.com/Oladii/CursorWasher/releases/latest/download/CursorWasher-Installer.dmg)
 
 ![Little bucket for washing your cursor](media/cursor-washer.gif)
 
@@ -23,7 +23,7 @@ Touched something unpleasant with your cursor and now want to give it a good scr
 
 ## Installation
 
-The installer in the exported project is `App/Cursor washer Installer.dmg`. Download the installer from the [releases page](https://github.com/Oladii/CursorWasher/releases).
+The installer in the exported project is `App/CursorWasher-Installer.dmg`. Download the installer from the [releases page](https://github.com/Oladii/CursorWasher/releases).
 
 1. Open the DMG.
 2. Drag `CursorWasher` to the `Applications` folder in the window that opens.
