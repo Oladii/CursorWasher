@@ -1,48 +1,50 @@
 # CursorWasher
 
-[Русский](README.ru.md)
+[English](README.en.md)
 
-## Why
+## Зачем
 
-Ever touch something unpleasant with your cursor and want to give it a good scrub with soap afterward? That's what the little bucket of water on your desktop is for. One click, and your cursor is as good as new. With a clean cursor, you can touch your own files and pet your designs again.
+Трогал курсором что-то неприятное, а после хочешь хорошенько помыть его с мылом? Один клик — и курсор как новенький. Чистым курсором снова можно трогать свои файлы и гладить макеты.
 
-![Little bucket for washing your cursor](media/cursor-washer.gif)
+[Скорее скачивай установщик для macOS](https://github.com/Oladii/CursorWasher/releases/latest/download/Cursor.washer.Installer.dmg)
 
-## What it can do
+![Ведёрко для мытья курсора](media/cursor-washer.gif)
 
-- Wash your cursor.
-- Lift your spirits.
-- Keep the bucket on top of all windows or leave it on the desktop.
+## Что умеет
 
-## What it cannot do
+- Мыть курсор.
+- Поднимать настроение.
+- Можно расположить ведро поверх всех окон или оставить на рабочем столе.
 
-- Buy beer.
-- Do anything useful.
+## Что не умеет
 
-## Installation
+- Покупать пиво.
+- Делать что-либо полезное.
 
-The installer in the exported project is `App/Cursor washer Installer.dmg`. Download the installer from the [releases page](https://github.com/Oladii/CursorWasher/releases).
+## Установка
 
-1. Open the DMG.
-2. Drag `CursorWasher` to the `Applications` folder in the window that opens.
-3. Launch the app from Applications.
-4. Set it to launch at login if you need the bucket often.
+В чистовом комплекте установщик находится в `App/Cursor washer Installer.dmg`. Скачать установщик можно со [страницы релизов](https://github.com/Oladii/CursorWasher/releases).
 
-Requires macOS 13 or later. Running on Intel has not been tested. I'm just a country boy, so the bucket doesn't have a Developer ID signature yet, which means macOS may block the downloaded app. [Apple's instructions for allowing it to open](https://support.apple.com/en-ie/102445).
+1. Откройте DMG.
+2. Перетащите `CursorWasher` в папку `Applications` («Программы») в открывшемся окне.
+3. Запустите приложение из «Программ».
+4. Настройте автозапуск, если ведро нужно часто.
 
-## Building
+Нужна macOS 13 или новее. Запуск на Intel не проверен. Я простой сельский парень, поэтому у ведра пока нет подписи Developer ID, а значит macOS может заблокировать скачанное приложение. [Инструкция Apple по разрешению запуска](https://support.apple.com/en-ie/102445).
 
-If you'd like to build the bucket yourself (why?), download the source code.
+## Сборка
 
-You'll need Apple's developer tools with Swift and the macOS SDK.
+Если хочется собрать ведро самому (зачем?), скачайте исходники.
+
+Потребуются инструменты разработки Apple с Swift и macOS SDK.
 
 ```sh
 bash scripts/package.sh
 ```
 
-This builds the app and an installer DMG in `Build/`.
+Команда собирает приложение и установочный DMG в `Build/`.
 
-To build only the app:
+Чтобы собрать только приложение:
 
 ```sh
 bash scripts/build.sh
