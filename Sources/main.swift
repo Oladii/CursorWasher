@@ -190,7 +190,9 @@ final class WidgetDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, N
               let image = NSImage(data: imageData),
               let bitmap = NSBitmapImageRep(data: imageData),
               let waterURL = Bundle.main.url(forResource: "water-calm-source", withExtension: "png"),
-              let waterImage = NSImage(contentsOf: waterURL) else {
+              let waterImage = NSImage(contentsOf: waterURL),
+              let highlightsURL = Bundle.main.url(forResource: "water-highlights-source", withExtension: "png"),
+              let waterHighlights = NSImage(contentsOf: highlightsURL) else {
             let alert = NSAlert()
             alert.messageText = "Couldn't load CursorWasher"
             alert.informativeText = "An image is missing or damaged. Please reinstall the app."
@@ -198,6 +200,7 @@ final class WidgetDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, N
             NSApp.terminate(nil)
             return
         }
+        square.waterHighlights = waterHighlights
         square.bucketImage = image
         square.waterImage = waterImage
         square.bucketHitMap = BucketHitMap(bitmap: bitmap)

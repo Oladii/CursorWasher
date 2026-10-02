@@ -29,10 +29,74 @@ final class ReturnSpriteView: NSView {
         guard let drawing = drawing else { return }
         NSGraphicsContext.saveGraphicsState()
         if let waterline = drawing.waterline {
-            NSBezierPath(rect: CGRect(x: bounds.minX, y: max(bounds.minY, waterline), width: bounds.width,
-                                     height: max(0, bounds.maxY - max(bounds.minY, waterline)))).addClip()
+            let path = NSBezierPath()
+            path.move(to: CGPoint(x: bounds.minX, y: waterline))
+            if let contact = drawing.immersion {
+                path.line(to: CGPoint(x: contact.center.x - contact.halfWidth, y: waterline))
+                for step in 0...48 {
+                    let x = contact.center.x + contact.halfWidth * (CGFloat(step) / 24 - 1)
+                    path.line(to: CGPoint(x: x, y: contact.lowerEdge(at: x)))
+                }
+            }
+            path.line(to: CGPoint(x: bounds.maxX, y: waterline))
+            path.line(to: CGPoint(x: bounds.maxX, y: max(bounds.maxY, waterline)))
+            path.line(to: CGPoint(x: bounds.minX, y: max(bounds.maxY, waterline)))
+            path.close()
+            path.addClip()
         }
+        let context = NSGraphicsContext.current!.cgContext
+        context.beginTransparencyLayer(auxiliaryInfo: nil)
         sprite.draw(at: drawing.position, appearance: drawing.appearance, shadowVisible: drawing.shadowVisible)
+        if let contact = drawing.immersion {
+            // Tint only the cursor pixels: a submerged, rounded lower face, not a hard stripe.
+            context.setBlendMode(.sourceAtop)
+            let colors = [CGColor(red: 0.25, green: 0.43, blue: 0.49, alpha: 0.48),
+                          CGColor(red: 0.25, green: 0.43, blue: 0.49, alpha: 0)]
+            let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(),
+                                      colors: colors as CFArray, locations: [0, 1])!
+            context.drawLinearGradient(gradient,
+                start: CGPoint(x: contact.center.x, y: contact.center.y - contact.depth),
+                end: CGPoint(x: contact.center.x, y: contact.center.y + 2), options: [])
+            context.setBlendMode(.normal)
+        }
+        if let line = drawing.waterline,
+           let motion = drawing.waterImpulses.first(where: { $0.kind == .contact && $0.isActive }),
+           let contact = drawing.immersion ?? sprite.shape.immersion(position: drawing.position,
+                appearance: drawing.appearance, waterline: line, depth: 1.35) {
+            // The water covers the entire lower face, through to its clipped edge.
+            // A stroke alone leaves a black cursor sliver below the meniscus.
+            context.setBlendMode(.sourceAtop)
+            let fade = exp(-motion.age * 8) * pow(1 - motion.age / motion.duration, 2)
+            context.setAlpha(CGFloat(min(1, motion.strength * fade)))
+            let base = line - (drawing.immersion?.depth ?? 0)
+            let phase = CGFloat(motion.rotation)
+            for crest in [false, true] {
+                let path = CGMutablePath()
+                for step in 0...32 {
+                    let t = CGFloat(step) / 32
+                    let x = contact.center.x + (t * 2 - 1) * (contact.halfWidth + 1)
+                    let y = base + 0.6 + sin(t * .pi) * 0.35
+                        + sin(t * 5 + phase) * 0.25 + (crest ? 0.65 : 0.55)
+                    if step == 0 { path.move(to: CGPoint(x: x, y: y)) }
+                    else { path.addLine(to: CGPoint(x: x, y: y)) }
+                }
+                if crest {
+                    context.setStrokeColor(CGColor(red: 0.77, green: 0.85, blue: 0.82, alpha: 0.42))
+                    context.setLineWidth(0.4)
+                    context.addPath(path)
+                    context.strokePath()
+                } else {
+                    path.addLine(to: CGPoint(x: contact.center.x + contact.halfWidth + 1, y: base - 2))
+                    path.addLine(to: CGPoint(x: contact.center.x - contact.halfWidth - 1, y: base - 2))
+                    path.closeSubpath()
+                    context.setFillColor(CGColor(red: 0.34, green: 0.51, blue: 0.54, alpha: 0.96))
+                    context.addPath(path)
+                    context.fillPath()
+                }
+            }
+            context.setBlendMode(.normal)
+        }
+        context.endTransparencyLayer()
         NSGraphicsContext.restoreGraphicsState()
         for drop in drawing.drops {
             PaintedWaterDrop.draw(at: drop.position, pose: drop.pose, opacity: drop.opacity)

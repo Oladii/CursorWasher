@@ -7,10 +7,13 @@ final class WashView: NSView {
     var bucketImage: NSImage? { didSet { rebuildWaterSurface() } }
     var paintsWaterCrests = true
     var waterImage: NSImage? { didSet { rebuildWaterSurface() } }
+    var waterHighlights: NSImage? { didSet { rebuildWaterSurface() } }
 
     private func rebuildWaterSurface() {
-        waterSurface = (waterImage ?? bucketImage).flatMap { WaterSurface(image: $0) }
-        if waterImage != nil && waterSurface == nil {
+        waterSurface = (waterImage ?? bucketImage).flatMap { source in
+            waterHighlights.flatMap { WaterSurface(image: source, highlights: $0) }
+        }
+        if waterImage != nil && waterHighlights != nil && waterSurface == nil {
             Logger(subsystem: Bundle.main.bundleIdentifier ?? "CursorWasher", category: "water")
                 .error("Water surface unavailable; drawing the original calm image")
         }

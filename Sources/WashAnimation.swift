@@ -24,6 +24,18 @@ enum SpringMotion {
     }
 }
 
+/// A shallow elliptical lower face at the cursor/water intersection.
+struct CursorImmersion {
+    var center: CGPoint
+    let halfWidth: CGFloat
+    let depth: CGFloat
+
+    func lowerEdge(at x: CGFloat) -> CGFloat {
+        let u = (x - center.x) / max(0.01, halfWidth)
+        return center.y - depth * sqrt(max(0, 1 - u * u))
+    }
+}
+
 struct CursorSample {
     let point: CGPoint
     let weight: CGFloat
@@ -73,6 +85,20 @@ struct CursorShape {
         let weight = crossing.reduce(CGFloat(0)) { $0 + $1.weight }
         let x = crossing.reduce(CGFloat(0)) { $0 + $1.point.x * $1.weight }
         return CGPoint(x: weight > 0 ? x / weight : position.x, y: waterline)
+    }
+
+    func immersion(position: CGPoint, appearance: CursorAppearance,
+                   waterline: CGFloat, depth: CGFloat) -> CursorImmersion? {
+        let transform = appearance.transform(around: position)
+        let points = samples.map { $0.point.applying(transform) }
+        guard depth > 0, let bottom = points.map({ $0.y }).min(),
+              let top = points.map({ $0.y }).max(), bottom < waterline + 0.5,
+              top >= waterline - depth else { return nil }
+        let distance = points.map { abs($0.y - waterline) }.min() ?? 0
+        let crossing = points.filter { abs($0.y - waterline) <= distance + 0.5 }
+        guard let left = crossing.map({ $0.x }).min(), let right = crossing.map({ $0.x }).max() else { return nil }
+        return CursorImmersion(center: CGPoint(x: (left + right) / 2, y: waterline),
+                               halfWidth: max(1.2, (right - left) / 2 + 0.35), depth: depth)
     }
 
     /// Keep the full shoulder span centered at every depth, including while masked.
@@ -222,6 +248,7 @@ struct WashAnimationFrame {
     var position: CGPoint
     let appearance: CursorAppearance
     var waterline: CGFloat?
+    var immersion: CursorImmersion?
     var shadowVisible: Bool = true
     var drops: [WashDrop] = []
     var sparkles: [WashSparkle] = []
@@ -234,6 +261,11 @@ struct WashAnimationFrame {
         result.position.x += offset.x
         result.position.y += offset.y
         result.waterline = waterline.map { $0 + offset.y }
+        if var contact = immersion {
+            contact.center.x += offset.x
+            contact.center.y += offset.y
+            result.immersion = contact
+        }
         result.splashOrigin = splashOrigin.map { CGPoint(x: $0.x + offset.x, y: $0.y + offset.y) }
         result.drops = drops.map {
             WashDrop(id: $0.id, position: CGPoint(x: $0.position.x + offset.x, y: $0.position.y + offset.y), opacity: $0.opacity, velocity: $0.velocity)
@@ -271,9 +303,10 @@ struct WashAnimation {
     private struct WaterState {
         let velocity: CGPoint
         let strength: CGFloat
+        let rotation: Double
     }
     private static let waterStep = 1.0 / 240
-    static let waterSettleDuration = 1.1
+    static let waterSettleDuration = 2.3
     private var waterStates: [WaterState] = []
     private var cachedDropFlights: [DropFlight] = []
 
@@ -297,6 +330,14 @@ struct WashAnimation {
     }
 
     static func washLift(at progress: Double) -> CGFloat { smooth(progress / 0.06) }
+
+    // Move the exposed cursor into the middle of the surface without changing depth.
+    static let cursorCenterRaise: CGFloat = 3
+    static let washingAngle: CGFloat = .pi * 160 / 180
+    static let immersionDepth: CGFloat = 1.35
+    static func cursorCenterOffset(at progress: Double) -> CGFloat {
+        cursorCenterRaise * smooth(progress / 0.12)
+    }
 
     private static func washLiftVelocity(at progress: Double) -> CGFloat {
         guard progress > 0 && progress < 0.06 else { return 0 }
@@ -392,6 +433,7 @@ struct WashAnimation {
         var point = hoverPosition()
         var appearance = CursorAppearance(scale: 3, angle: .pi)
         var waterline: CGFloat?
+        var immersionDepth: CGFloat = 0
         var drops: [WashDrop] = []
         var sparkles: [WashSparkle] = []
         let submerged = shape.submergedPosition(appearance: appearance, waterline: water.minY, centerX: BucketLayout.washingCenterX)
@@ -418,14 +460,23 @@ struct WashAnimation {
             point = Self.mix(interDipPosition, submerged, Self.secondDiveProgress(t))
             waterline = water.minY
         case .wash:
+            let engage = Self.smooth(t / 0.12)
+            appearance = CursorAppearance(scale: 3, angle: .pi + (Self.washingAngle - .pi) * engage)
+            immersionDepth = Self.immersionDepth * engage
             let motion = BucketLayout.washingPosition(at: t)
             point = shape.submergedPosition(appearance: appearance, waterline: water.minY,
                 centerX: motion.x, verticalOffset: motion.y - BucketLayout.landing.y)
-            point.y += Self.washLift(at: t)
-            waterline = water.minY
+            let centerOffset = Self.cursorCenterOffset(at: t)
+            point.y += Self.washLift(at: t) + centerOffset
+            waterline = water.minY + centerOffset
         case .rise:
-            point = Self.mix(CGPoint(x: submerged.x, y: submerged.y + 1), point, eased)
-            waterline = water.minY
+            appearance = CursorAppearance(scale: 3, angle: Self.washingAngle + (.pi - Self.washingAngle) * eased)
+            let departing = shape.submergedPosition(appearance: appearance, waterline: water.minY,
+                centerX: BucketLayout.washingCenterX)
+            point = Self.mix(CGPoint(x: departing.x, y: departing.y + 1 + Self.cursorCenterRaise),
+                             hoverPosition(angle: appearance.angle), eased)
+            waterline = water.minY + Self.cursorCenterRaise * (1 - eased)
+            immersionDepth = Self.immersionDepth * (1 - eased)
         case .shake:
             let offset = Self.shakeOffset(t)
             point.y += offset * Self.shakeAmplitude
@@ -472,6 +523,10 @@ struct WashAnimation {
         }
         var frame = WashAnimationFrame(phase: phase, phaseProgress: t, position: point,
                                        appearance: appearance, waterline: waterline, drops: drops, sparkles: sparkles)
+        if let waterline = waterline {
+            frame.immersion = shape.immersion(position: point, appearance: appearance,
+                                              waterline: waterline, depth: immersionDepth)
+        }
         frame.shadowVisible = ![WashPhase.partialDip, .dipLift, .dive, .wash].contains(phase)
         let firstImpact = impactTime(for: .partialDip)
         let impacts = [firstImpact, impactTime]
@@ -480,7 +535,32 @@ struct WashAnimation {
             let uv = BucketLayout.waterCoordinates(impactPoint(for: index == 0 ? .partialDip : .dive))
             return WaterImpulse(age: time - impact, strength: index == 0 ? 0.75 : 1.15, x: uv.x, y: uv.y)
         }
-        frame.waterImpulses += stirImpulses(at: time)
+        let stirring = stirImpulses(at: time)
+        frame.waterImpulses += stirring
+        if let line = waterline {
+            let bottom = point.y + shape.lowerEdge(appearance: appearance).y
+            let wet = Double(Self.smooth((line - bottom) / 2.5))
+            if wet > 0, let contact = shape.immersion(position: point, appearance: appearance,
+                                                     waterline: line, depth: max(1.35, immersionDepth)) {
+                // Contact starts at the first immersed pixels, independently of the
+                // slower circulation. Keep the moving paint against the visible rod.
+                let roundedDepth = frame.immersion?.depth ?? 0
+                let front = roundedDepth / Self.immersionDepth
+                // At the initial front-edge contact, the wave spreads into the
+                // bucket. As the rod rises to wash, its crest reaches the lower face.
+                let inset = 1.1 * (1 - front) - 0.15 * front
+                let uv = BucketLayout.waterCoordinates(CGPoint(x: contact.center.x,
+                    y: contact.center.y - roundedDepth + inset))
+                let motion = stirring.first
+                let spin = motion?.rotation ?? 0
+                let engagement = Double(Self.smooth((time - firstImpact) / 0.045))
+                frame.waterImpulses.append(WaterImpulse(age: 1e-6,
+                    strength: (0.88 + min(0.12, (motion?.strength ?? 0) * 0.5)) * wet * engagement,
+                    x: uv.x, y: uv.y, kind: .contact, direction: motion?.direction ?? -.pi / 2,
+                    rotation: -(time - firstImpact) * 12 + spin * 0.65,
+                    width: Double((min(8, max(3, contact.halfWidth)) + 2 * (1 - front)) / BucketLayout.waterTextureRect.width)))
+            }
+        }
         frame.waterImpulses += flights.compactMap { flight in
             let age = time - flight.contact
             guard age >= 0 && age < 0.8 else { return nil }
@@ -525,36 +605,57 @@ struct WashAnimation {
             y: BucketLayout.stirringCenterY + motion.y - water.midY + Self.washLift(at: elapsed / WashPhase.wash.duration)))
         let velocity = Self.mix(waterStates[index].velocity, waterStates[index + 1].velocity, fraction)
         let strength = waterStates[index].strength + (waterStates[index + 1].strength - waterStates[index].strength) * fraction
+        let rotation = waterStates[index].rotation
+            + (waterStates[index + 1].rotation - waterStates[index].rotation) * Double(fraction)
         return [WaterImpulse(age: 1e-6, strength: strength, x: position.x, y: position.y,
-                             kind: .stir, direction: atan2(velocity.y, velocity.x))]
+                             kind: .stir, direction: atan2(velocity.y, velocity.x), rotation: rotation)]
     }
 
     private func makeWaterStates() -> [WaterState] {
         var velocity = CGPoint.zero
         var strength: CGFloat = 0
-        var states = [WaterState(velocity: velocity, strength: strength)]
+        var rotation = 0.0, angularVelocity = 0.0
+        var states = [WaterState(velocity: velocity, strength: strength, rotation: rotation)]
         let count = Int(ceil((WashPhase.wash.duration + Self.waterSettleDuration) / Self.waterStep))
         for index in 1...count {
             let time = Double(index) * Self.waterStep
             let progress = min(1, time / WashPhase.wash.duration)
             var cursorVelocity = BucketLayout.washingVelocity(at: progress)
+            let orbit = BucketLayout.washingPosition(at: progress)
+            // Uncompress the cursor's ellipse to recover its signed orbital speed.
+            // Translation back and forth must not reverse the circulation each half-turn.
+            let rx = (orbit.x - BucketLayout.washingCenterX) / 9
+            let ry = (orbit.y - BucketLayout.water.midY) / 1.5
+            let orbitRate = (rx * cursorVelocity.y / 1.5 - ry * cursorVelocity.x / 9)
+                / WashPhase.wash.duration
             cursorVelocity.y += Self.washLiftVelocity(at: progress)
             let attack = Self.smooth(time / 0.12)
             let targetVelocity = time < WashPhase.wash.duration
                 ? CGPoint(x: cursorVelocity.x / BucketLayout.waterTextureRect.width / WashPhase.wash.duration * attack,
                           y: cursorVelocity.y / BucketLayout.waterTextureRect.height / WashPhase.wash.duration * attack)
                 : .zero
-            // Water acquires momentum instead of copying every reversal instantly.
-            // After the forcing stops, one coherent movement loses energy slowly.
+            // Loosen coupling as the final swish slows: otherwise the stopping
+            // cursor brakes the water before it even leaves the bucket.
+            let finalSwish = Double(Self.smooth((time - WashPhase.wash.duration + 0.30) / 0.30))
             let release = Double(Self.smooth((time - WashPhase.wash.duration) / 0.08))
-            let responseTime = 0.07 + 0.33 * release
+            let responseTime = 0.07 + 0.48 * finalSwish + 1.65 * release
             velocity = Self.mix(velocity, targetVelocity, CGFloat(1 - exp(-Self.waterStep / responseTime)))
-            let targetStrength = time < WashPhase.wash.duration ? 0.6 * min(1, hypot(velocity.x, velocity.y) / 6) : 0
+            // Back-and-forth translation can cancel while the water still spins.
+            // Preserve the visibility of that angular momentum as the rod slows.
+            let spinningEnergy = abs(angularVelocity) / 16 * finalSwish
+            let targetStrength = time < WashPhase.wash.duration
+                ? 0.6 * min(1, max(hypot(velocity.x, velocity.y) / 6, spinningEnergy)) : 0
             strength += (targetStrength - strength) * CGFloat(1 - exp(-Self.waterStep / responseTime))
-            let tail = (time - WashPhase.wash.duration) / Self.waterSettleDuration
+            // Keep recognizable brushwork while the free surface is still turning.
+            // Drag slows it first; the final envelope then fades it to calm water.
+            let tail = (time - WashPhase.wash.duration - 0.90) / (Self.waterSettleDuration - 0.90)
             let settle = 1 - Self.smooth(tail)
+            let targetSpin = time < WashPhase.wash.duration ? Double(orbitRate) * 0.42 * Double(attack) : 0
+            angularVelocity += (targetSpin - angularVelocity) * (1 - exp(-Self.waterStep / responseTime))
+            rotation += angularVelocity * Double(settle) * Self.waterStep
             states.append(WaterState(
-                velocity: CGPoint(x: velocity.x * settle, y: velocity.y * settle), strength: strength * settle))
+                velocity: CGPoint(x: velocity.x * settle, y: velocity.y * settle), strength: strength * settle,
+                rotation: rotation))
         }
         return states
     }

@@ -11,15 +11,23 @@ struct SinkAnimation {
     let destination: CGPoint
     let impactAt: Double
     let impactPoint: CGPoint
+    let surfaceY: CGFloat
+    let contactY: CGFloat
+    private let shape: CursorShape
+    private let immersionDepth: CGFloat
     var submergedAt: Double { transitDuration + submergeDuration }
     var duration: Double { max(submergedAt, impactAt + Self.splashDuration) }
 
     init(source: WashAnimationFrame, shape: CursorShape, imageBounds: CGRect) {
         self.source = source
+        self.shape = shape
+        immersionDepth = source.immersion?.depth ?? 0
         let transform = source.appearance.transform(around: .zero)
         let body = shape.bounds.applying(transform)
         let image = imageBounds.applying(transform)
         let water = BucketLayout.water
+        surfaceY = source.waterline ?? water.minY
+        contactY = surfaceY - immersionDepth
         let bodyOnScreen = body.offsetBy(dx: source.position.x, dy: source.position.y)
         // A cursor already masked by water can sink directly. A cursor returning
         // elsewhere first passes over the rim, so it cannot vanish outside the bucket.
@@ -27,12 +35,12 @@ struct SinkAnimation {
         let direct = source.waterline != nil || (overWater && bodyOnScreen.minY >= water.minY)
         transitDuration = direct ? 0 : 0.22
         entry = direct ? source.position : CGPoint(x: BucketLayout.washingCenterX - body.midX,
-                                                   y: water.minY + 3 - image.minY)
+                                                   y: surfaceY + 3 - image.minY)
         // Include transparent padding and shadows, not just the opaque samples.
-        destination = CGPoint(x: BucketLayout.washingCenterX - body.midX, y: water.minY - image.maxY - 2)
+        destination = CGPoint(x: BucketLayout.washingCenterX - body.midX, y: contactY - image.maxY - 2)
         let visibleTop = shape.samples.map { $0.point.applying(transform).y }.max() ?? body.maxY
         let travel = max(0.001, entry.y - destination.y)
-        let contact = min(1, max(0, (entry.y + visibleTop - water.minY) / travel))
+        let contact = min(1, max(0, (entry.y + visibleTop - contactY) / travel))
         var lower = 0.0, upper = 1.0
         for _ in 0..<32 {
             let middle = (lower + upper) / 2
@@ -42,7 +50,7 @@ struct SinkAnimation {
         let progress = SpringMotion.progress((impactAt - transitDuration) / submergeDuration)
         let position = CGPoint(x: entry.x + (destination.x - entry.x) * progress,
                                y: entry.y + (destination.y - entry.y) * progress)
-        impactPoint = shape.surfaceContact(position: position, appearance: source.appearance, waterline: water.minY)
+        impactPoint = shape.surfaceContact(position: position, appearance: source.appearance, waterline: contactY)
     }
 
     func frame(at elapsed: Double) -> WashAnimationFrame {
@@ -61,10 +69,12 @@ struct SinkAnimation {
             let t = SpringMotion.progress((time - transitDuration) / submergeDuration)
             point = CGPoint(x: entry.x + (destination.x - entry.x) * t,
                             y: entry.y + (destination.y - entry.y) * t)
-            waterline = BucketLayout.water.minY
+            waterline = surfaceY
         }
         var frame = WashAnimationFrame(phase: .dive, phaseProgress: time / duration,
                                       position: point, appearance: source.appearance, waterline: waterline)
+        frame.immersion = shape.immersion(position: point, appearance: source.appearance,
+                                          waterline: surfaceY, depth: immersionDepth)
         frame.shadowVisible = false
         frame.waterImpulses = source.waterImpulses.map {
             var impulse = $0

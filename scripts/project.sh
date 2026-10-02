@@ -1,6 +1,6 @@
 # Shared by the working build and the exported project.
-APP_VERSION="0.19.5"
-APP_BUILD="41"
+APP_VERSION="0.20.0"
+APP_BUILD="42"
 APP_MINIMUM_MACOS="13.0"
 APP_IDENTIFIER="local.cursorwash.probe"
 GITHUB_REPOSITORY="Oladii/CursorWasher"
@@ -13,5 +13,5 @@ APP_RUNTIME_SOURCES=(
   TransparentContentView StatusBarIcon main
 )
 APP_RUNTIME_RESOURCES=(
-  bucket-dry.png water-calm-source.png app-icon.png installer-layout.dsstore
+  bucket-dry.png water-calm-source.png water-highlights-source.png app-icon.png installer-layout.dsstore
 )

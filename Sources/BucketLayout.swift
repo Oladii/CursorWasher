@@ -8,7 +8,7 @@ enum BucketLayout {
     static let centerBounds = CGRect(x: 0, y: 0, width: side, height: side)
     // Measured against the supplied 1254-square image, with AppKit's Y pointing up.
     static let water = CGRect(x: 32 + 35, y: 32 + 78.5, width: 63, height: 15)
-    // Integral bounds of the painted-water mask, shared with the displacement renderer.
+    // Integral bounds of the painted-water mask, shared with the layered water renderer.
     static let waterTextureRect = CGRect(x: 63, y: 109, width: 70, height: 17)
     static func waterCoordinates(_ point: CGPoint) -> CGPoint {
         CGPoint(x: (point.x - waterTextureRect.minX) / waterTextureRect.width,
