@@ -110,7 +110,3 @@ defaults delete local.cursorwash.probe
 
 [MIT License](LICENSE) — Copyright (c) 2026 Oladii.
 [Сведения о приватности](PRIVACY.md): приложение работает локально и не отправляет данные по сети.
-
-## Code signing policy
-
-[Политика подписи](CODE_SIGNING.md). Сейчас приложение не подписано; подключение SignPath ещё не завершено.

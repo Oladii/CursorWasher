@@ -110,7 +110,3 @@ Local settings and logs (`CursorWasher.settings`, `CursorWasher.log`) are stored
 
 [MIT License](LICENSE) — Copyright (c) 2026 Oladii.
 [Privacy information](PRIVACY.md): the app works locally and does not send data over the network.
-
-## Code signing policy
-
-[Code signing policy](CODE_SIGNING.md). The app is currently unsigned; SignPath enrollment is not yet complete.
