@@ -85,3 +85,32 @@ You'll need .NET Framework 4.8; no external packages are required. Open the `Win
 ```
 
 The app will be in `App`, and the ZIP in `.build/Packages/CursorWasher.zip`.
+
+Windows builds and tests also run in [GitHub Actions](https://github.com/Oladii/CursorWasher/actions/workflows/windows.yml).
+The ZIP is available in each successful run's artifacts; these builds are currently unsigned.
+
+## Uninstalling
+
+### macOS
+
+Choose **Quit** from the app menu, then delete `CursorWasher` from Applications.
+If you added it to Login Items, remove that entry too.
+To also remove the saved window layer, run this in Terminal after quitting:
+
+```sh
+defaults delete local.cursorwash.probe
+```
+
+### Windows
+
+Choose **Quit** from the tray menu, then delete the app folder and any shortcut you created for it.
+Local settings and logs (`CursorWasher.settings`, `CursorWasher.log`) are stored in the same folder.
+
+## License and privacy
+
+[MIT License](LICENSE) — Copyright (c) 2026 Oladii.
+[Privacy information](PRIVACY.md): the app works locally and does not send data over the network.
+
+## Code signing policy
+
+[Code signing policy](CODE_SIGNING.md). The app is currently unsigned; SignPath enrollment is not yet complete.

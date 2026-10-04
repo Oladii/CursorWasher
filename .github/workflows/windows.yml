@@ -1,0 +1,48 @@
+name: Windows build
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'Windows/**'
+      - '.github/workflows/windows.yml'
+      - 'LICENSE'
+  pull_request:
+    paths:
+      - 'Windows/**'
+      - '.github/workflows/windows.yml'
+      - 'LICENSE'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build and test Windows
+    runs-on: windows-2022
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build, test and package
+        run: .\Windows\scripts\build.ps1 -Test -Package -NoShortcut
+      - name: Verify Windows package
+        run: .\Windows\scripts\verify-package.ps1
+      - name: Retain unsigned build for this commit
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: CursorWasher-Windows-unsigned-${{ github.sha }}
+          path: Windows/.build/Packages/CursorWasher.zip
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0

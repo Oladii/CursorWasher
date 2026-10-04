@@ -85,3 +85,32 @@ bash scripts/build.sh
 ```
 
 Приложение появится в `App`, архив — в `.build/Packages/CursorWasher.zip`.
+
+Сборка и проверки Windows также выполняются в [GitHub Actions](https://github.com/Oladii/CursorWasher/actions/workflows/windows.yml).
+ZIP доступен в артефактах успешного запуска; эти сборки пока не подписаны.
+
+## Удаление
+
+### macOS
+
+В меню приложения выберите **Quit**, затем удалите `CursorWasher` из «Программ».
+Если вы добавляли его в объекты входа, уберите оттуда тоже.
+Чтобы также удалить сохранённый слой окна, после выхода выполните в Терминале:
+
+```sh
+defaults delete local.cursorwash.probe
+```
+
+### Windows
+
+Выберите **Quit** в меню значка трея, затем удалите папку с приложением и созданный для него ярлык.
+Локальные настройки и журнал (`CursorWasher.settings`, `CursorWasher.log`) находятся в той же папке.
+
+## Лицензия и конфиденциальность
+
+[MIT License](LICENSE) — Copyright (c) 2026 Oladii.
+[Сведения о приватности](PRIVACY.md): приложение работает локально и не отправляет данные по сети.
+
+## Code signing policy
+
+[Политика подписи](CODE_SIGNING.md). Сейчас приложение не подписано; подключение SignPath ещё не завершено.

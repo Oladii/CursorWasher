@@ -81,9 +81,14 @@ Mac-скрипты и `Export` не участвуют.
 .\Windows\scripts\build.ps1 -Test -Package
 ```
 
-`Windows/.build/Packages/CursorWasher.zip` содержит программу
-и краткую инструкцию `START.txt`. Журналы, личные настройки и диагностические программы в архив
+`Windows/.build/Packages/CursorWasher.zip` содержит программу,
+краткую инструкцию `START.txt` и лицензию `LICENSE.txt`. Журналы, личные настройки и диагностические программы в архив
 не входят. Команда не публикует и не отправляет файлы.
+
+В GitHub Actions та же сборка выполняется на GitHub-hosted Windows runner с
+`-Test -Package -NoShortcut`. Дополнительная проверка `scripts/verify-package.ps1`
+проверяет название продукта в EXE и содержимое ZIP. Артефакты привязаны к коммиту
+и запуску workflow; подпись SignPath пока не подключена.
 
 Для диагностической сборки с кнопкой в панели задач:
 

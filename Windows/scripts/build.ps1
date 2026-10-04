@@ -1,4 +1,4 @@
-param([switch]$Test, [switch]$Inspect, [switch]$Diagnostics, [switch]$Package)
+param([switch]$Test, [switch]$Inspect, [switch]$Diagnostics, [switch]$Package, [switch]$NoShortcut)
 $ErrorActionPreference = 'Stop'
 $windowsRoot = Split-Path $PSScriptRoot -Parent
 $projectRoot = Split-Path $windowsRoot -Parent
@@ -42,6 +42,7 @@ if ($version -notmatch '^\d+\.\d+\.\d+$' -or $build -notmatch '^\d+$') { throw '
 $metadata = @"
 using System.Reflection;
 [assembly: AssemblyTitle("CursorWasher for Windows")]
+[assembly: AssemblyProduct("CursorWasher")]
 [assembly: AssemblyVersion("$version.$build")]
 [assembly: AssemblyFileVersion("$version.$build")]
 [assembly: AssemblyInformationalVersion("$version-windows-preview+$build")]
@@ -92,6 +93,11 @@ foreach ($legacyConfig in @(($compiledExe + '.config'), ($exe + '.config'))) {
 Write-Output "Built: $exe ($version, build $build, Windows preview)"
 if (-not $diagnosticBuild) {
     Copy-Item -LiteralPath (Join-Path $windowsRoot 'START.txt') -Destination $output -Force
+    $license = Join-Path $windowsRoot 'LICENSE'
+    if (-not (Test-Path -LiteralPath $license)) { $license = Join-Path $projectRoot 'release\LICENSE' }
+    Copy-Item -LiteralPath $license -Destination (Join-Path $output 'LICENSE.txt') -Force
+}
+if (-not $diagnosticBuild -and -not $NoShortcut) {
     $shell = New-Object -ComObject WScript.Shell
     try {
         $shortcutPath = Join-Path $projectRoot 'CursorWasher.lnk'
@@ -110,6 +116,6 @@ if ($Package) {
     New-Item -ItemType Directory -Path $packagesOutput -Force | Out-Null
     $zip = Join-Path $packagesOutput 'CursorWasher.zip'
     # Only these deliverable files, never local logs, settings, or inspection tools.
-    Compress-Archive -LiteralPath $exe, (Join-Path $output 'START.txt') -DestinationPath $zip -Force
+    Compress-Archive -LiteralPath $exe, (Join-Path $output 'START.txt'), (Join-Path $output 'LICENSE.txt') -DestinationPath $zip -Force
     Write-Output "Packaged locally: $zip"
 }
