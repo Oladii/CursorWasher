@@ -43,8 +43,7 @@ Download the [macOS installer](https://github.com/Oladii/CursorWasher/releases/l
 Download [CursorWasher.zip](https://github.com/Oladii/CursorWasher/releases/latest/download/CursorWasher.zip). Requires .NET Framework 4.8.
 
 1. Extract the archive into a separate folder.
-2. Keep `CursorWasher.exe.config` beside `CursorWasher.exe`.
-3. Run `CursorWasher.exe`. No installer or administrator privileges are needed.
+2. Run `CursorWasher.exe`. No installer or administrator privileges are needed.
 
 ## Building from source
 

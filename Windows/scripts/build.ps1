@@ -73,7 +73,6 @@ $resourceArguments = @('bucket-dry.png','water-calm-source.png','water-highlight
 $arguments += $resourceArguments
 & $compiler @arguments
 if ($LASTEXITCODE -ne 0) { throw 'C# compilation failed.' }
-[IO.File]::WriteAllText(($compiledExe + '.config'), '<configuration><startup><supportedRuntime version="v4.0" sku=".NETFramework,Version=v4.8" /></startup></configuration>')
 if ($Test) {
     New-Item -ItemType Directory -Path $testsOutput -Force | Out-Null
     $testExe = Join-Path $testsOutput 'CursorWasher.Tests.exe'
@@ -85,7 +84,11 @@ if ($Test) {
 }
 # A failed compile or requested test run must leave the launchable app intact.
 Assert-AppClosed
-Copy-Item -LiteralPath $compiledExe, ($compiledExe + '.config') -Destination $output -Force
+Copy-Item -LiteralPath $compiledExe -Destination $output -Force
+# Remove the runtime hint left by older builds; the executable runs on its own.
+foreach ($legacyConfig in @(($compiledExe + '.config'), ($exe + '.config'))) {
+    if (Test-Path -LiteralPath $legacyConfig) { Remove-Item -LiteralPath $legacyConfig }
+}
 Write-Output "Built: $exe ($version, build $build, Windows preview)"
 if (-not $diagnosticBuild) {
     Copy-Item -LiteralPath (Join-Path $windowsRoot 'START.txt') -Destination $output -Force
@@ -107,6 +110,6 @@ if ($Package) {
     New-Item -ItemType Directory -Path $packagesOutput -Force | Out-Null
     $zip = Join-Path $packagesOutput 'CursorWasher.zip'
     # Only these deliverable files, never local logs, settings, or inspection tools.
-    Compress-Archive -LiteralPath $exe, ($exe + '.config'), (Join-Path $output 'START.txt') -DestinationPath $zip -Force
+    Compress-Archive -LiteralPath $exe, (Join-Path $output 'START.txt') -DestinationPath $zip -Force
     Write-Output "Packaged locally: $zip"
 }

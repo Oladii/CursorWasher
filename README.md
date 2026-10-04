@@ -43,8 +43,7 @@
 Скачайте [CursorWasher.zip](https://github.com/Oladii/CursorWasher/releases/latest/download/CursorWasher.zip). Нужен .NET Framework 4.8.
 
 1. Распакуйте архив в отдельную папку.
-2. Оставьте `CursorWasher.exe.config` рядом с `CursorWasher.exe`.
-3. Запустите `CursorWasher.exe`. Установщик и права администратора не нужны.
+2. Запустите `CursorWasher.exe`. Установщик и права администратора не нужны.
 
 ## Самостоятельная сборка
 
