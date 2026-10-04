@@ -6,7 +6,9 @@
 
 Touched something unpleasant with your cursor and now want to give it a good scrub with soap? One click, and your cursor is as good as new. With a clean cursor, you can touch your own files and pet your designs again.
 
-[Grab the macOS installer](https://github.com/Oladii/CursorWasher/releases/latest/download/CursorWasher-Installer.dmg) · [Download for Windows](https://github.com/Oladii/CursorWasher/releases/latest/download/CursorWasher-Windows-preview.zip)
+[Grab the macOS installer](https://github.com/Oladii/CursorWasher/releases/latest/download/CursorWasher-Installer.dmg) · [Download for Windows](https://github.com/Oladii/CursorWasher/releases/latest/download/CursorWasher.zip)
+
+Separate source downloads: [macOS](https://github.com/Oladii/CursorWasher/releases/latest/download/CursorWasher-macOS-Sources.zip) · [Windows](https://github.com/Oladii/CursorWasher/releases/latest/download/CursorWasher-Windows-Sources.zip)
 
 ![Little bucket for washing your cursor](media/cursor-washer.gif)
 

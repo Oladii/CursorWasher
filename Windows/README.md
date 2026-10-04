@@ -80,7 +80,7 @@ Mac-скрипты и `Export` не участвуют.
 .\Windows\scripts\build.ps1 -Test -Package
 ```
 
-`Windows/.build/Packages/CursorWasher-Windows-preview.zip` содержит программу,
+`Windows/.build/Packages/CursorWasher.zip` содержит программу,
 конфигурацию и краткую инструкцию `START.txt`. Журналы, личные настройки и диагностические программы в архив
 не входят. Команда не публикует и не отправляет файлы.
 

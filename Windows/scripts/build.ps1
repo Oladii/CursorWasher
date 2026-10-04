@@ -98,7 +98,7 @@ if (-not $diagnosticBuild) {
 }
 if ($Package) {
     New-Item -ItemType Directory -Path $packagesOutput -Force | Out-Null
-    $zip = Join-Path $packagesOutput 'CursorWasher-Windows-preview.zip'
+    $zip = Join-Path $packagesOutput 'CursorWasher.zip'
     # Only these deliverable files, never local logs, settings, or inspection tools.
     Compress-Archive -LiteralPath $exe, ($exe + '.config'), (Join-Path $output 'START.txt') -DestinationPath $zip -Force
     Write-Output "Packaged locally: $zip"
