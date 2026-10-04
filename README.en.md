@@ -8,8 +8,6 @@ Touched something unpleasant with your cursor and now want to give it a good scr
 
 [Grab the macOS installer](https://github.com/Oladii/CursorWasher/releases/latest/download/CursorWasher-Installer.dmg) · [Download for Windows](https://github.com/Oladii/CursorWasher/releases/latest/download/CursorWasher.zip)
 
-Separate source downloads: [macOS](https://github.com/Oladii/CursorWasher/releases/latest/download/CursorWasher-macOS-Sources.zip) · [Windows](https://github.com/Oladii/CursorWasher/releases/latest/download/CursorWasher-Windows-Sources.zip)
-
 ![Little bucket for washing your cursor](media/cursor-washer.gif)
 
 ## How to launch on macOS
@@ -31,20 +29,33 @@ I'm just a country boy, so the bucket doesn't have a Developer ID signature yet,
 
 ## Installation
 
-The installer in the exported project is `App/CursorWasher-Installer.dmg`. Download the installer from the [releases page](https://github.com/Oladii/CursorWasher/releases).
+### macOS
+
+Download the [macOS installer](https://github.com/Oladii/CursorWasher/releases/latest/download/CursorWasher-Installer.dmg). Requires macOS 13 or later. Running on Intel has not been tested.
 
 1. Open the DMG.
 2. Drag `CursorWasher` to the `Applications` folder in the window that opens.
 3. Launch the app from Applications.
 4. Set it to launch at login if you need the bucket often.
 
-Requires macOS 13 or later. Running on Intel has not been tested.
+### Windows
 
-## Building
+Download [CursorWasher.zip](https://github.com/Oladii/CursorWasher/releases/latest/download/CursorWasher.zip). Requires .NET Framework 4.8.
+
+1. Extract the archive into a separate folder.
+2. Keep `CursorWasher.exe.config` beside `CursorWasher.exe`.
+3. Run `CursorWasher.exe`. No installer or administrator privileges are needed.
+
+## Building from source
 
 If you'd like to build the bucket yourself (why?), download the source code.
 
+### macOS
+
+[Download macOS sources](https://github.com/Oladii/CursorWasher/releases/latest/download/CursorWasher-macOS-Sources.zip).
+
 You'll need Apple's developer tools with Swift and the macOS SDK.
+In the repository, open the `macOS` folder. In the separate source archive, open the folder containing `scripts`.
 
 ```sh
 bash scripts/package.sh
@@ -57,3 +68,15 @@ To build only the app:
 ```sh
 bash scripts/build.sh
 ```
+
+### Windows
+
+[Download Windows sources](https://github.com/Oladii/CursorWasher/releases/latest/download/CursorWasher-Windows-Sources.zip).
+
+You'll need .NET Framework 4.8; no external packages are required. Open the `Windows` folder in the repository or extracted source archive and run in PowerShell:
+
+```powershell
+.\scripts\build.ps1 -Test -Package
+```
+
+The app will be in `App`, and the ZIP in `.build/Packages/CursorWasher.zip`.

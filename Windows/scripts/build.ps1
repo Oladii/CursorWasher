@@ -28,10 +28,17 @@ Assert-AppClosed
 $compiler = Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
 if (-not (Test-Path -LiteralPath $compiler)) { throw '.NET Framework 4.x C# compiler was not found.' }
 New-Item -ItemType Directory -Path $output, $staging, $toolsOutput -Force | Out-Null
-$config = Get-Content (Join-Path $projectRoot 'scripts\project.sh') -Raw
-$version = [regex]::Match($config, '(?m)^APP_VERSION="([0-9.]+)"').Groups[1].Value
-$build = [regex]::Match($config, '(?m)^APP_BUILD="([0-9]+)"').Groups[1].Value
-if (-not $version -or -not $build) { throw 'Cannot read version/build from scripts/project.sh.' }
+$sharedConfig = Join-Path $projectRoot 'scripts\project.sh'
+if (Test-Path -LiteralPath $sharedConfig) {
+    $config = Get-Content -LiteralPath $sharedConfig -Raw
+    $version = [regex]::Match($config, '(?m)^APP_VERSION="([0-9.]+)"').Groups[1].Value
+    $build = [regex]::Match($config, '(?m)^APP_BUILD="([0-9]+)"').Groups[1].Value
+} else {
+    $config = Get-Content -LiteralPath (Join-Path $windowsRoot 'project.json') -Raw | ConvertFrom-Json
+    $version = [string]$config.version; $build = [string]$config.build
+    $projectRoot = $windowsRoot
+}
+if ($version -notmatch '^\d+\.\d+\.\d+$' -or $build -notmatch '^\d+$') { throw 'Cannot read a valid version/build from project configuration.' }
 $metadata = @"
 using System.Reflection;
 [assembly: AssemblyTitle("CursorWasher for Windows")]

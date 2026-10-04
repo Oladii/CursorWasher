@@ -8,8 +8,6 @@
 
 [Скачать для macOS](https://github.com/Oladii/CursorWasher/releases/latest/download/CursorWasher-Installer.dmg) · [Скачать для Windows](https://github.com/Oladii/CursorWasher/releases/latest/download/CursorWasher.zip)
 
-Исходники отдельно: [macOS](https://github.com/Oladii/CursorWasher/releases/latest/download/CursorWasher-macOS-Sources.zip) · [Windows](https://github.com/Oladii/CursorWasher/releases/latest/download/CursorWasher-Windows-Sources.zip)
-
 ![Ведёрко для мытья курсора](media/cursor-washer.gif)
 
 ## Как запустить на macOS
@@ -31,18 +29,33 @@
 
 ## Установка
 
-В чистовом комплекте установщик находится в `App/CursorWasher-Installer.dmg`. Скачать установщик можно со [страницы релизов](https://github.com/Oladii/CursorWasher/releases).
+### macOS
+
+Скачайте [установщик для macOS](https://github.com/Oladii/CursorWasher/releases/latest/download/CursorWasher-Installer.dmg). Нужна macOS 13 или новее.
 
 1. Откройте DMG.
 2. Перетащите `CursorWasher` в папку `Applications` («Программы») в открывшемся окне.
 3. Запустите приложение из «Программ».
 4. Настройте автозапуск, если ведро нужно часто.
 
-## Сборка
+### Windows
+
+Скачайте [CursorWasher.zip](https://github.com/Oladii/CursorWasher/releases/latest/download/CursorWasher.zip). Нужен .NET Framework 4.8.
+
+1. Распакуйте архив в отдельную папку.
+2. Оставьте `CursorWasher.exe.config` рядом с `CursorWasher.exe`.
+3. Запустите `CursorWasher.exe`. Установщик и права администратора не нужны.
+
+## Самостоятельная сборка
 
 Если хочется собрать ведро самому (зачем?), скачайте исходники.
 
+### macOS
+
+[Скачать исходники для macOS](https://github.com/Oladii/CursorWasher/releases/latest/download/CursorWasher-macOS-Sources.zip).
+
 Потребуются инструменты разработки Apple с Swift и macOS SDK.
+В репозитории перейдите в папку `macOS`, а в отдельном архиве исходников — в папку со `scripts`.
 
 ```sh
 bash scripts/package.sh
@@ -55,3 +68,15 @@ bash scripts/package.sh
 ```sh
 bash scripts/build.sh
 ```
+
+### Windows
+
+[Скачать исходники для Windows](https://github.com/Oladii/CursorWasher/releases/latest/download/CursorWasher-Windows-Sources.zip).
+
+Потребуется .NET Framework 4.8; внешние пакеты не нужны. Перейдите в папку `Windows` в репозитории или распакованном архиве и выполните в PowerShell:
+
+```powershell
+.\scripts\build.ps1 -Test -Package
+```
+
+Приложение появится в `App`, архив — в `.build/Packages/CursorWasher.zip`.
