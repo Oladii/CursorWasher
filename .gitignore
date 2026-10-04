@@ -2,3 +2,5 @@
 Build/
 App/
 .DS_Store
+._*
+CursorWasher.lnk

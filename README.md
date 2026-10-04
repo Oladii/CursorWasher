@@ -6,11 +6,11 @@
 
 Трогал курсором что-то неприятное, а после хочешь хорошенько помыть его с мылом? Один клик — и курсор как новенький. Чистым курсором снова можно трогать свои файлы и гладить макеты.
 
-[Скорее скачивай установщик для macOS](https://github.com/Oladii/CursorWasher/releases/latest/download/CursorWasher-Installer.dmg)
+[Скорее скачивай установщик для macOS](https://github.com/Oladii/CursorWasher/releases/latest/download/CursorWasher-Installer.dmg) · [Скачать для Windows](https://github.com/Oladii/CursorWasher/releases/latest/download/CursorWasher-Windows-preview.zip)
 
 ![Ведёрко для мытья курсора](media/cursor-washer.gif)
 
-## Как запустить
+## Как запустить на macOS
 
 ![Предупреждение macOS при запуске CursorWasher](https://cdsassets.apple.com/live/7WUAS350/images/macos/sequoia/locale/ru-ru/macos-sequoia-app-not-opened-could-not-verify-free-from-malware.png)
 
