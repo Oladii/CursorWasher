@@ -16,6 +16,12 @@ Touched something unpleasant with your cursor and now want to give it a good scr
 
 I'm just a country boy, so the bucket doesn't have a Developer ID signature yet, which means macOS will block the downloaded app. [Apple's instructions for allowing it to open](https://support.apple.com/en-ie/102445).
 
+## How to launch on Windows
+
+The Windows app is not yet digitally signed, so SmartScreen may display “Windows protected your PC”.
+
+If you downloaded the app from the [official CursorWasher release](https://github.com/Oladii/CursorWasher/releases/latest), click **“More info” → “Run anyway”**.
+
 ## What it can do
 
 - Wash your cursor.
