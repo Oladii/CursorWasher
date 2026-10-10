@@ -104,7 +104,8 @@ defaults delete local.cursorwash.probe
 ### Windows
 
 Choose **Quit** from the tray menu, then delete the app folder and any shortcut you created for it.
-Local settings and logs (`CursorWasher.settings`, `CursorWasher.log`) are stored in the same folder.
+The bucket position is stored in the Windows user registry: `HKEY_CURRENT_USER\Software\CursorWasher`.
+The application does not create files beside the EXE.
 
 ## License and privacy
 

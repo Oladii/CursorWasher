@@ -12,10 +12,11 @@ used locally. Windows also reads the selected cursor and taskbar theme from
 the current user's registry settings; it does not replace the system cursor
 scheme or change those registry settings.
 
-Windows stores `CursorWasher.settings` and `CursorWasher.log` beside the EXE.
-Settings contain the bucket position and window layer. Logs contain local
-diagnostic information, such as display scale, cursor image dimensions and
-errors. These files are not uploaded and can be deleted after quitting the app.
+Windows stores the bucket position and window layer in the current user's
+registry under `HKEY_CURRENT_USER\Software\CursorWasher`. The normal build
+does not create settings files or logs. Developer diagnostic builds write
+`CursorWasher.log` beside their EXE with local display scale, cursor image
+dimensions and errors. These logs are not uploaded.
 Avoid sharing a diagnostic log without reviewing its contents.
 
 macOS stores the window layer in the app's local preferences under
@@ -37,10 +38,11 @@ CursorWasher работает локально. Приложение не дел
 читаются выбранный курсор и тема панели задач из пользовательских настроек
 реестра; системная схема курсоров и эти настройки не меняются.
 
-Windows сохраняет `CursorWasher.settings` и `CursorWasher.log` рядом с EXE.
-В настройках находятся положение ведра и слой окна. В журнале — локальная
-диагностика: масштаб экрана, размеры изображения курсора и ошибки. Эти файлы
-никуда не отправляются; после выхода из приложения их можно удалить.
+Windows сохраняет положение ведра и слой окна в пользовательском реестре:
+`HKEY_CURRENT_USER\Software\CursorWasher`. Обычная сборка не создаёт файлы
+настроек или журнал. Диагностические сборки для разработки записывают
+`CursorWasher.log` рядом со своим EXE: масштаб экрана, размеры изображения
+курсора и ошибки. Эти журналы никуда не отправляются.
 Перед передачей журнала другому человеку проверьте его содержимое.
 
 macOS сохраняет слой окна в локальных настройках приложения

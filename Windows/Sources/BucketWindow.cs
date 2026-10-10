@@ -1,7 +1,6 @@
 using System;
 using System.Diagnostics;
 using System.Drawing;
-using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
 
@@ -27,7 +26,7 @@ namespace CursorWasher
         private IntPtr previousForeground;
         private uint previousProcess;
         private readonly bool smoke;
-        private readonly WindowSettings settings = new WindowSettings(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "CursorWasher.settings"));
+        private readonly WindowSettings settings = new WindowSettings();
         public BucketWindow(bool smoke)
         {
             this.smoke = smoke;
@@ -160,7 +159,10 @@ namespace CursorWasher
                 Stop("complete");
                 if (returnFocus && previousForeground != Handle && Native.IsWindow(previousForeground)) {
                     uint process; Native.GetWindowThreadProcessId(previousForeground, out process);
-                    if (process == previousProcess) Log.Write("return_focus accepted=" + Native.SetForegroundWindow(previousForeground));
+                    if (process == previousProcess) {
+                        bool accepted = Native.SetForegroundWindow(previousForeground);
+                        Log.Write("return_focus accepted=" + accepted);
+                    }
                 }
                 return;
             }

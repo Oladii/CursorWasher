@@ -27,7 +27,7 @@ namespace CursorWasher
                     using (BucketWindow window = new BucketWindow(smoke)) {
                         ThreadExceptionEventHandler handler = delegate(object sender, ThreadExceptionEventArgs e) {
                             window.Stop("exception", false); Log.Write("error " + e.Exception); Environment.ExitCode = 1;
-                            if (!smoke) MessageBox.Show("Не удалось продолжить анимацию. Курсор возвращён. Подробности — в CursorWasher.log.", "CursorWasher");
+                            if (!smoke) MessageBox.Show("Не удалось продолжить анимацию. Курсор возвращён. " + e.Exception.Message, "CursorWasher");
                             window.Exit();
                         };
                         Application.ThreadException += handler;

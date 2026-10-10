@@ -104,7 +104,8 @@ defaults delete local.cursorwash.probe
 ### Windows
 
 Выберите **Quit** в меню значка трея, затем удалите папку с приложением и созданный для него ярлык.
-Локальные настройки и журнал (`CursorWasher.settings`, `CursorWasher.log`) находятся в той же папке.
+Положение ведра сохраняется в пользовательском реестре Windows: `HKEY_CURRENT_USER\Software\CursorWasher`.
+Приложение не создаёт файлы рядом с EXE.
 
 ## Лицензия и конфиденциальность
 
