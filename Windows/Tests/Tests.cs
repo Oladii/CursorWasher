@@ -73,6 +73,18 @@ namespace CursorWasher
                     }
                 }
                 CheckMenus();
+                foreach (int side in new[] { 192, 288, 384 }) {
+                    using (System.Drawing.Bitmap input = new System.Drawing.Bitmap(side, side, System.Drawing.Imaging.PixelFormat.Format32bppPArgb)) {
+                        input.SetPixel(side / 2, side / 2, System.Drawing.Color.FromArgb(128, 80, 120, 160));
+                        System.Drawing.Color painted = input.GetPixel(side / 2, side / 2);
+                        LayeredWindow.EnableRectangularInput(input);
+                        Check(input.GetPixel(side / 2, side / 2) == painted, "Input surface preserves painted bucket pixels");
+                        bool fullSquare = true;
+                        for (int y = 0; y < side; y++) for (int x = 0; x < side; x++)
+                            if (input.GetPixel(x, y).A == 0) fullSquare = false;
+                        Check(fullSquare && input.GetPixel(0, 0).A == 1, "Transparent widget margins receive input at every DPI");
+                    }
+                }
                 CursorRasterTests.Run(Check);
                 WaterTests.Run(Check);
                 CursorFileTests.Run(Check);

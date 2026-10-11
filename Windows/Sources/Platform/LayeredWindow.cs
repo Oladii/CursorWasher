@@ -1,6 +1,7 @@
 using System;
 using System.ComponentModel;
 using System.Drawing;
+using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
 
@@ -33,6 +34,23 @@ namespace CursorWasher
         protected override void OnPaintBackground(PaintEventArgs e) { }
         public void Present(Bitmap bitmap, Point destination)
         { PresentTo(Handle, bitmap, destination); }
+        internal static void EnableRectangularInput(Bitmap bitmap)
+        {
+            // Windows passes input through pixels with zero alpha. Keep the Mac
+            // widget's full square interactive using the smallest nonzero alpha.
+            BitmapData data = bitmap.LockBits(new Rectangle(0, 0, bitmap.Width, bitmap.Height),
+                ImageLockMode.ReadWrite, PixelFormat.Format32bppPArgb);
+            try {
+                byte[] row = new byte[bitmap.Width * 4];
+                for (int y = 0; y < bitmap.Height; y++) {
+                    IntPtr address = IntPtr.Add(data.Scan0, y * data.Stride);
+                    Marshal.Copy(address, row, 0, row.Length);
+                    for (int x = 0; x < bitmap.Width; x++)
+                        if (row[x * 4 + 3] == 0) row[x * 4 + 3] = 1;
+                    Marshal.Copy(row, 0, address, row.Length);
+                }
+            } finally { bitmap.UnlockBits(data); }
+        }
         internal static void PresentTo(IntPtr window, Bitmap bitmap, Point destination)
         {
             IntPtr screen = Native.GetDC(IntPtr.Zero), memory = IntPtr.Zero, handle = IntPtr.Zero, previous = IntPtr.Zero;

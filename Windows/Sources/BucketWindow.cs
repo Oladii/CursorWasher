@@ -23,6 +23,7 @@ namespace CursorWasher
         private double started, scale = 1, nextSpriteRetry;
         private bool reduced, initialized, exiting, armed, dragged, suppressUp, hadFocus, resourcesDisposed, reportedMissingCursor;
         private Point pressed, originalLocation;
+        private bool pressedOnBucket;
         private IntPtr previousForeground;
         private uint previousProcess;
         private readonly bool smoke;
@@ -112,7 +113,7 @@ namespace CursorWasher
         private bool PointerOverBucket()
         {
             Native.Point p;
-            return Visible && Native.GetCursorPos(out p) && artwork.Contains(Local(new Point(p.X, p.Y))) && Native.WindowFromPoint(p) == Handle;
+            return Visible && Native.GetCursorPos(out p) && ClientRectangle.Contains(PointToClient(new Point(p.X, p.Y))) && Native.WindowFromPoint(p) == Handle;
         }
         private bool IsForeground { get { return Native.GetForegroundWindow() == Handle; } }
         private void BeginWash()
@@ -171,7 +172,10 @@ namespace CursorWasher
         private void Render(Frame frame)
         {
             if (!initialized) return;
-            using (Bitmap image = artwork.Bucket(scale, frame)) Present(image, Location);
+            using (Bitmap image = artwork.Bucket(scale, frame)) {
+                EnableRectangularInput(image);
+                Present(image, Location);
+            }
             if (frame == null) overlay.Hide();
             else if (sprite != null) overlay.PresentSprite(sprite, frame, scale, Location);
         }
@@ -246,13 +250,14 @@ namespace CursorWasher
                 return;
             }
             suppressUp = false; armed = true; dragged = false;
+            pressedOnBucket = artwork.Contains(Pointer());
             pressed = Cursor.Position; originalLocation = Location;
             Capture = true;
         }
         protected override void OnMouseMove(MouseEventArgs e)
         {
             base.OnMouseMove(e);
-            if (!armed) return;
+            if (!armed || !pressedOnBucket) return;
             Point p = Cursor.Position;
             int dx = p.X - pressed.X, dy = p.Y - pressed.Y;
             if (!dragged && Math.Sqrt(dx * dx + dy * dy) >= 4 * scale) dragged = true;
