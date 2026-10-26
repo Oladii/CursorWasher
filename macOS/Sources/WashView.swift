@@ -11,6 +11,11 @@ final class WashView: NSView {
     var paintsWaterCrests = true
     var waterImage: NSImage? { didSet { rebuildWaterSurface() } }
     var waterHighlights: NSImage? { didSet { rebuildWaterSurface() } }
+    var soapImage: NSImage? { didSet { needsDisplay = true } }
+    // The soap is an independent decoration; the bucket's image rect never changes.
+    // Crop the empty source canvas, retaining the authored soap/bubble silhouette.
+    private static let soapSourceRect = CGRect(x: 108, y: 81, width: 454, height: 251)
+    static let soapRect = CGRect(x: 46, y: 45, width: 42, height: 42 * 251 / 454)
     var waterDirtAmount: Double = 0 { didSet {
         waterDirtAmount = waterDirtAmount.isFinite ? min(Double(WaterAppearance.maximumLevel), max(0, waterDirtAmount)) : 0
         if oldValue != waterDirtAmount { needsDisplay = true }
@@ -20,6 +25,72 @@ final class WashView: NSView {
         set { waterDirtAmount = Double(newValue) }
     }
     var foamFrame = FoamFrame() { didSet { needsDisplay = true } }
+    private var modeTransition: ModeCrossfade?
+    private var modeTransitionImage: CGImage?
+    private var modeTransitionTimer: Timer?
+    var isChangingMode: Bool { modeTransition != nil }
+
+    /// Blend fixed captures, so switching modes cannot move the painted bucket
+    /// or reset a partially completed fade when the user switches back.
+    func setFoamMode(_ frame: FoamFrame, animated: Bool,
+                     at time: TimeInterval? = nil,
+                     rasterScale: CGFloat? = nil) {
+        guard animated else {
+            finishModeTransition()
+            foamFrame = frame
+            return
+        }
+        let scale = rasterScale ?? window?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 2
+        let previous = modeTransition?.image(at: time ?? ProcessInfo.processInfo.systemUptime) ?? captureScene(scale: scale)
+        finishModeTransition()
+        foamFrame = frame
+        guard let previous = previous, let target = captureScene(scale: scale) else { return }
+        // Resource decoding/capturing is preparation, not part of the fade.
+        let start = time ?? ProcessInfo.processInfo.systemUptime
+        guard let transition = ModeCrossfade(from: previous, to: target, at: start) else { return }
+        modeTransition = transition
+        modeTransitionImage = transition.image(at: start)
+        let timer = Timer(timeInterval: 1.0 / 60, repeats: true) { [weak self] timer in
+            guard let self = self else { timer.invalidate(); return }
+            self.advanceModeTransition(at: ProcessInfo.processInfo.systemUptime)
+        }
+        modeTransitionTimer = timer
+        RunLoop.main.add(timer, forMode: .common)
+        needsDisplay = true
+    }
+
+    func advanceModeTransition(at time: TimeInterval) {
+        guard let transition = modeTransition else { return }
+        if transition.isComplete(at: time) { finishModeTransition() }
+        else { modeTransitionImage = transition.image(at: time); needsDisplay = true }
+    }
+
+    func finishModeTransition() {
+        modeTransitionTimer?.invalidate()
+        modeTransitionTimer = nil
+        modeTransition = nil
+        modeTransitionImage = nil
+        needsDisplay = true
+    }
+
+    private func captureScene(scale: CGFloat) -> CGImage? {
+        guard scale.isFinite, scale > 0,
+              let bitmap = NSBitmapImageRep(bitmapDataPlanes: nil,
+                pixelsWide: Int((bounds.width * scale).rounded()),
+                pixelsHigh: Int((bounds.height * scale).rounded()), bitsPerSample: 8,
+                samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+                colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0),
+              let graphics = NSGraphicsContext(bitmapImageRep: bitmap) else { return nil }
+        NSGraphicsContext.saveGraphicsState()
+        defer { NSGraphicsContext.restoreGraphicsState() }
+        NSGraphicsContext.current = graphics
+        graphics.cgContext.scaleBy(x: scale, y: scale)
+        drawScene(bounds)
+        graphics.flushGraphics()
+        return bitmap.cgImage
+    }
+
+    deinit { modeTransitionTimer?.invalidate() }
 
     private func rebuildWaterSurface() {
         surfaces.removeAll()
@@ -200,6 +271,18 @@ final class WashView: NSView {
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 
     override func draw(_ dirtyRect: NSRect) {
+        if let image = modeTransitionImage, let context = NSGraphicsContext.current?.cgContext {
+            context.saveGState()
+            context.clear(dirtyRect)
+            context.interpolationQuality = .none
+            context.draw(image, in: bounds)
+            context.restoreGState()
+            return
+        }
+        drawScene(dirtyRect)
+    }
+
+    private func drawScene(_ dirtyRect: NSRect) {
         NSColor.clear.setFill()
         dirtyRect.fill(using: .copy)
         NSGraphicsContext.current?.imageInterpolation = .high
@@ -220,6 +303,12 @@ final class WashView: NSView {
             } else {
                 drawWater(in: context)
                 basin?.drawFront(in: context)
+            }
+            if !foamFrame.clusters.isEmpty, let soapImage = soapImage {
+                context.saveGState()
+                context.clip(to: Self.soapRect)
+                soapImage.draw(in: Self.soapRect, from: Self.soapSourceRect, operation: .sourceOver, fraction: 1)
+                context.restoreGState()
             }
         }
         if recovery {

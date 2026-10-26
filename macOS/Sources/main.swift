@@ -71,7 +71,10 @@ final class WidgetDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, N
         })
         observations.append(NSWorkspace.shared.notificationCenter.addObserver(
             forName: NSWorkspace.accessibilityDisplayOptionsDidChangeNotification, object: nil, queue: .main
-        ) { [weak self] _ in self?.finish(reason: "accessibility_changed") })
+        ) { [weak self] _ in
+            if NSWorkspace.shared.accessibilityDisplayShouldReduceMotion { self?.square.finishModeTransition() }
+            self?.finish(reason: "accessibility_changed")
+        })
         escapeMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             if event.keyCode == 53 { self?.finish(reason: "escape", retryRecovery: true); return nil }
             return event
@@ -208,7 +211,9 @@ final class WidgetDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, N
               let waterURL = Bundle.main.url(forResource: "water-calm-source", withExtension: "png"),
               let waterImage = NSImage(contentsOf: waterURL),
               let highlightsURL = Bundle.main.url(forResource: "water-highlights-source", withExtension: "png"),
-              let waterHighlights = NSImage(contentsOf: highlightsURL) else {
+              let waterHighlights = NSImage(contentsOf: highlightsURL),
+              let soapURL = Bundle.main.url(forResource: "soap-bar", withExtension: "png"),
+              let soapImage = NSImage(contentsOf: soapURL) else {
             let alert = NSAlert()
             alert.messageText = "Couldn't load CursorWasher"
             alert.informativeText = "An image is missing or damaged. Please reinstall the app."
@@ -219,6 +224,7 @@ final class WidgetDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, N
         square.waterHighlights = waterHighlights
         square.bucketImage = image
         square.waterImage = waterImage
+        square.soapImage = soapImage
         applyWaterSettings()
         square.bucketHitMap = BucketHitMap(bitmap: bitmap)
         square.onWash = { [weak self] point, event in self?.startWash(at: point, event: event) }
@@ -290,6 +296,7 @@ final class WidgetDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, N
 
     private func animate() {
         let now = ProcessInfo.processInfo.systemUptime
+        square.advanceModeTransition(at: now)
         // Read the real pointer on every frame, including when it is outside the widget.
         guard let frame = playback.frame(at: now, cursor: currentCursorPosition()) else { return }
         advanceWaterDirt(at: now)
@@ -341,7 +348,7 @@ final class WidgetDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, N
         guard session.phase == .idle, !playback.isRunning, !pendingStart else { return }
         waterState.usesSoap.toggle()
         waterState.save(to: .standard)
-        applyWaterSettings()
+        applyWaterSettings(animated: true)
     }
 
     @objc private func changeWater() {
@@ -351,12 +358,14 @@ final class WidgetDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, N
         applyWaterSettings()
     }
 
-    private func applyWaterSettings() {
+    private func applyWaterSettings(animated: Bool = false) {
         foamTimer?.invalidate()
         foamTimer = nil
         square.waterDirtAmount = waterState.dirtAmount
         foam.setEnabled(waterState.usesSoap)
-        square.foamFrame = foam.snapshot
+        // The 0.42 s fade ends before partialDip (0.4875 s), even if a wash
+        // starts immediately. Cursor/foreground occlusion therefore stays exact.
+        square.setFoamMode(foam.snapshot, animated: animated && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion)
     }
 
     private func advanceWaterDirt(at time: TimeInterval) {
