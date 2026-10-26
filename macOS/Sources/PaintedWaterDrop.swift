@@ -26,9 +26,9 @@ enum PaintedWaterDrop {
             controlPoint1: CGPoint(x: w * 0.48, y: h * 0.24),
             controlPoint2: CGPoint(x: w * (0.3 - taper * 0.2) + skew, y: h * 0.5))
         path.close()
-        NSColor(calibratedRed: 0.55, green: 0.68, blue: 0.69, alpha: opacity * 0.85).setFill()
+        NSColor(calibratedRed: 0.74, green: 0.87, blue: 0.91, alpha: opacity * 0.94).setFill()
         path.fill()
-        NSColor(calibratedRed: 0.3, green: 0.43, blue: 0.45, alpha: opacity * 0.48).setStroke()
+        NSColor(calibratedRed: 0.48, green: 0.70, blue: 0.78, alpha: opacity * 0.34).setStroke()
         path.lineWidth = 0.45
         path.stroke()
         let highlight = NSBezierPath()
@@ -36,7 +36,7 @@ enum PaintedWaterDrop {
         highlight.curve(to: CGPoint(x: -w * 0.2, y: -h * 0.2),
             controlPoint1: CGPoint(x: -w * 0.33, y: h * 0.06),
             controlPoint2: CGPoint(x: -w * 0.34, y: -h * 0.1))
-        NSColor(calibratedRed: 0.92, green: 0.93, blue: 0.85, alpha: opacity * 0.72).setStroke()
+        NSColor(calibratedRed: 0.98, green: 1, blue: 1, alpha: opacity * 0.86).setStroke()
         highlight.lineWidth = 0.65
         highlight.lineCapStyle = .round
         highlight.stroke()

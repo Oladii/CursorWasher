@@ -28,6 +28,12 @@ If you downloaded the app from the [official CursorWasher release](https://githu
 - Lift your spirits.
 - Keep the bucket on top of all windows or leave it on the desktop.
 
+On macOS, you can also:
+
+- Choose **Wash with soap** or **Wash without soap** in the bucket menu.
+- Watch the water get dirtier during washing with or without soap, reaching its darkest color after ten washes.
+- Choose **Change water** to fill the bucket with clean water again.
+
 ## What it cannot do
 
 - Buy beer.

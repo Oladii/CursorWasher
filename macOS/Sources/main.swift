@@ -18,6 +18,7 @@ final class WidgetDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, N
     private var window: WidgetWindow!
     private let square = WashView(frame: NSRect(x: 0, y: 0, width: BucketLayout.side, height: BucketLayout.side))
     private var animationTimer: Timer?
+    private var foamTimer: Timer?
     private var recoveryTimer: Timer?
     private var recoveryAlert: NSAlert?
     private var pendingTermination = false
@@ -31,7 +32,15 @@ final class WidgetDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, N
     private var animation: WashAnimation?
     private var widgetLayer: WidgetLayer = .front
     private var statusItem: NSStatusItem?
-    private enum MenuTag: Int { case visibility = 1, front, back }
+    private var waterState = BucketWaterState.loadForLaunch(from: .standard)
+    private struct WaterWashTiming {
+        let startedAt: TimeInterval
+        let firstWet: TimeInterval
+        let lastWet: TimeInterval
+    }
+    private var waterWashTiming: WaterWashTiming?
+    private var foam = FoamAnimation()
+    private enum MenuTag: Int { case visibility = 1, front, back, soap, water }
     private let returnOverlay = ReturnOverlay()
     private let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "CursorWasher", category: "widget")
     private lazy var session = CursorSession(driver: SystemCursor()) { [weak self] in self?.record($0) }
@@ -137,6 +146,9 @@ final class WidgetDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, N
             add("Hide Bucket", #selector(toggleWidgetVisibility), tag: .visibility)
             menu.addItem(.separator())
         }
+        add(waterState.soapActionTitle, #selector(toggleSoap), tag: .soap)
+        add("Change water", #selector(changeWater), tag: .water)
+        menu.addItem(.separator())
         add("Bring to Front", #selector(bringToFront), tag: .front)
         add("Send to Back", #selector(sendToBack), tag: .back)
         menu.addItem(.separator())
@@ -158,6 +170,10 @@ final class WidgetDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, N
         }
         menu.item(withTag: MenuTag.front.rawValue)?.state = widgetLayer == .front ? .on : .off
         menu.item(withTag: MenuTag.back.rawValue)?.state = widgetLayer == .back ? .on : .off
+        menu.item(withTag: MenuTag.soap.rawValue)?.title = waterState.soapActionTitle
+        let canChangeSettings = session.phase == .idle && !playback.isRunning && !pendingStart
+        menu.item(withTag: MenuTag.soap.rawValue)?.isEnabled = canChangeSettings
+        menu.item(withTag: MenuTag.water.rawValue)?.isEnabled = canChangeSettings
     }
 
     func menuWillOpen(_ menu: NSMenu) {
@@ -203,6 +219,7 @@ final class WidgetDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, N
         square.waterHighlights = waterHighlights
         square.bucketImage = image
         square.waterImage = waterImage
+        applyWaterSettings()
         square.bucketHitMap = BucketHitMap(bitmap: bitmap)
         square.onWash = { [weak self] point, event in self?.startWash(at: point, event: event) }
         square.onAccessibleWash = { [weak self] in
@@ -249,12 +266,20 @@ final class WidgetDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, N
             record("start_refused: cursor_image_unavailable")
             return
         }
+        let now = ProcessInfo.processInfo.systemUptime
+        let reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
         guard let animation = animation,
-              playback.begin(animation, at: ProcessInfo.processInfo.systemUptime, isActive: NSApp.isActive,
-                             reduceMotion: NSWorkspace.shared.accessibilityDisplayShouldReduceMotion) else {
+              playback.begin(animation, at: now, isActive: NSApp.isActive, reduceMotion: reduceMotion) else {
             return
         }
+        waterState.beginWash()
+        waterWashTiming = WaterWashTiming(startedAt: now,
+            firstWet: reduceMotion ? 0 : animation.impactTime(for: .partialDip),
+            lastWet: reduceMotion ? WashPlayback.reducedDuration : WashPhase.rise.start)
+        if !reduceMotion { foam.begin(animation, at: now) }
         self.animation = nil
+        foamTimer?.invalidate()
+        foamTimer = nil
         square.recovery = false
         square.animationFrame = nil
         record("washing_started: duration=\(playback.duration)")
@@ -267,13 +292,25 @@ final class WidgetDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, N
         let now = ProcessInfo.processInfo.systemUptime
         // Read the real pointer on every frame, including when it is outside the widget.
         guard let frame = playback.frame(at: now, cursor: currentCursorPosition()) else { return }
+        advanceWaterDirt(at: now)
+        square.foamFrame = foam.update(at: now, frame: frame,
+            reduceMotion: NSWorkspace.shared.accessibilityDisplayShouldReduceMotion)
         square.animationFrame = frame
         square.displayIfNeeded()
         let origin = window.convertPoint(toScreen: square.convert(.zero, to: nil))
         returnOverlay.show(frame.translated(by: origin), layer: widgetLayer,
-                           staysVisibleWhenInactive: playback.state == .sinking)
+                           staysVisibleWhenInactive: playback.state == .sinking,
+                           foam: square.foamFrame.translated(by: origin),
+                           waterDirtLevel: square.waterDirtLevel, waterDirtAmount: waterState.dirtAmount,
+                           bucketFrontPath: square.bucketFrontPath)
         if playback.isComplete(at: now) {
             let sunk = playback.state == .sinking
+            if !sunk {
+                waterState.recordCompletedWash()
+                waterState.save(to: .standard)
+                waterWashTiming = nil
+                square.waterDirtAmount = waterState.dirtAmount
+            }
             finish(reason: sunk ? "sunk" : "completed", restoreFocus: !sunk)
         }
     }
@@ -284,14 +321,77 @@ final class WidgetDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, N
 
     private func sinkCursor(reason: String) {
         guard playback.isRunning else { return }
+        let now = ProcessInfo.processInfo.systemUptime
+        if playback.state == .washing {
+            advanceWaterDirt(at: now)
+            stopWaterDirt()
+            foam.cancel(at: now)
+        }
         washClickSequence.cancel()
         square.cancelInteraction()
-        if playback.interrupt(at: ProcessInfo.processInfo.systemUptime,
+        if playback.interrupt(at: now,
                               cursor: currentCursorPosition(), reason: reason) {
             record(playback.state == .sinking ? "sinking_started: reason=\(reason)" : "washing_cancelled: reason=\(reason)")
         }
         guard playback.isRunning else { finish(reason: "sink_recovery"); return }
         animate()
+    }
+
+    @objc private func toggleSoap() {
+        guard session.phase == .idle, !playback.isRunning, !pendingStart else { return }
+        waterState.usesSoap.toggle()
+        waterState.save(to: .standard)
+        applyWaterSettings()
+    }
+
+    @objc private func changeWater() {
+        guard session.phase == .idle, !playback.isRunning, !pendingStart else { return }
+        waterState.changeWater()
+        waterState.save(to: .standard)
+        applyWaterSettings()
+    }
+
+    private func applyWaterSettings() {
+        foamTimer?.invalidate()
+        foamTimer = nil
+        square.waterDirtAmount = waterState.dirtAmount
+        foam.setEnabled(waterState.usesSoap)
+        square.foamFrame = foam.snapshot
+    }
+
+    private func advanceWaterDirt(at time: TimeInterval) {
+        guard playback.state == .washing, let timing = waterWashTiming else { return }
+        let elapsed = time - timing.startedAt
+        let duration = max(0.001, timing.lastWet - timing.firstWet)
+        waterState.advanceWash(progress: (elapsed - timing.firstWet) / duration)
+        square.waterDirtAmount = waterState.dirtAmount
+    }
+
+    private func stopWaterDirt() {
+        guard waterWashTiming != nil else { return }
+        waterState.finishWash()
+        waterState.save(to: .standard)
+        waterWashTiming = nil
+        square.waterDirtAmount = waterState.dirtAmount
+    }
+
+    private func settleFoam() {
+        foamTimer?.invalidate()
+        foamTimer = nil
+        square.foamFrame = foam.update(at: ProcessInfo.processInfo.systemUptime, frame: nil,
+            reduceMotion: NSWorkspace.shared.accessibilityDisplayShouldReduceMotion)
+        guard foam.isSettling else { return }
+        let timer = Timer(timeInterval: 1.0 / 60, repeats: true) { [weak self] timer in
+            guard let self = self else { timer.invalidate(); return }
+            self.square.foamFrame = self.foam.update(at: ProcessInfo.processInfo.systemUptime, frame: nil,
+                reduceMotion: NSWorkspace.shared.accessibilityDisplayShouldReduceMotion)
+            if !self.foam.isSettling {
+                timer.invalidate()
+                self.foamTimer = nil
+            }
+        }
+        foamTimer = timer
+        RunLoop.main.add(timer, forMode: .common)
     }
 
     @objc private func bringToFront() {
@@ -324,6 +424,8 @@ final class WidgetDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, N
     }
 
     private func finish(reason: String, restoreFocus: Bool = false, retryRecovery: Bool = false) {
+        advanceWaterDirt(at: ProcessInfo.processInfo.systemUptime)
+        stopWaterDirt()
         // A drag cancels the animation while preserving its own mouse tracking.
         if reason != "drag" { square.cancelInteraction() }
         pendingStart = false
@@ -344,6 +446,7 @@ final class WidgetDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, N
         }
         let restored = playback.stop(reason: reason, retryRecovery: retryRecovery)
         square.animationFrame = nil
+        settleFoam()
         square.recovery = !restored
         updateRecovery(restored: restored)
         if restored && restoreFocus && NSApp.isActive, let target = target, !target.isTerminated {

@@ -23,6 +23,7 @@ final class WaterSurface {
     private let stillImage: CGImage
     private let layers: [CGImage]
     private let contactPaint: CGImage
+    private let dirtLevel: Int
     private let frameRenderer: ((CGImage) -> CGImage?)?
     private var lastGoodImage: CGImage
     private var reportedFailure = false
@@ -35,7 +36,9 @@ final class WaterSurface {
             bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
     }
 
-    init?(image: NSImage, highlights: NSImage, frameRenderer: ((CGImage) -> CGImage?)? = nil) {
+    init?(image: NSImage, highlights: NSImage, dirtLevel: Int = 0,
+          frameRenderer: ((CGImage) -> CGImage?)? = nil) {
+        self.dirtLevel = min(WaterAppearance.maximumLevel, max(0, dirtLevel))
         guard let source = image.cgImage(forProposedRect: nil, context: nil, hints: nil),
               let canvas = Self.canvas() else { return nil }
         let layout = BucketLayout.imageRect
@@ -43,7 +46,8 @@ final class WaterSurface {
         canvas.scaleBy(x: CGFloat(Self.textureSide) / region.width, y: CGFloat(Self.textureSide) / region.height)
         canvas.translateBy(x: -region.minX, y: -region.minY)
         canvas.draw(source, in: layout)
-        guard let calm = canvas.makeImage() else { return nil }
+        guard let original = canvas.makeImage(),
+              let calm = WaterAppearance.tint(original, level: dirtLevel) else { return nil }
         stillImage = calm
         lastGoodImage = calm
         self.frameRenderer = frameRenderer
@@ -79,8 +83,9 @@ final class WaterSurface {
                 }
                 output[target + 3] = UInt8((coverage * 255).rounded())
             } }
-            guard let image = layer.makeImage() else { return nil }
-            painted.append(image)
+            guard let image = layer.makeImage(),
+                  let tinted = WaterAppearance.tint(image, level: dirtLevel) else { return nil }
+            painted.append(tinted)
         }
         layers = painted
         // Reuse the source watercolor as one local patch. Its brushwork rotates
@@ -99,7 +104,7 @@ final class WaterSurface {
     /// Uneven, tapered ribbons with fixed brush grain, in the water's plane.
     private static func arc(on canvas: CGContext, center: CGPoint, radius: CGFloat,
                             start: CGFloat, end: CGFloat, width: CGFloat, seed: CGFloat,
-                            opacity: CGFloat = 1, crest: CGColor? = nil) {
+                            opacity: CGFloat = 1, crest: CGColor? = nil, dirtLevel: Int = 0) {
         let count = 80
         canvas.saveGState()
         if opacity != 1 { canvas.setAlpha(opacity) }
@@ -123,8 +128,8 @@ final class WaterSurface {
             }
             path.closeSubpath()
             canvas.setFillColor(shadow
-                ? CGColor(red: 0.27, green: 0.40, blue: 0.44, alpha: 0.34)
-                : (crest ?? CGColor(red: 0.83, green: 0.89, blue: 0.86, alpha: 0.64)))
+                ? WaterAppearance.color(0.27, 0.40, 0.44, 0.34, level: dirtLevel)
+                : (crest ?? WaterAppearance.color(0.83, 0.89, 0.86, 0.64, level: dirtLevel)))
             canvas.addPath(path)
             canvas.fillPath()
         }
@@ -174,7 +179,7 @@ final class WaterSurface {
                 ? [(1.5, 0.05), (1.0, 0.12), (0.6, 0.28)]
                 : [(1.1, 0.06), (0.7, 0.14), (0.4, 0.62)]
             for (width, alpha) in bands {
-                canvas.setStrokeColor(CGColor(red: color.0, green: color.1, blue: color.2, alpha: alpha))
+                canvas.setStrokeColor(WaterAppearance.color(color.0, color.1, color.2, alpha, level: dirtLevel))
                 canvas.setLineWidth(width)
                 canvas.addPath(front)
                 canvas.strokePath()
@@ -216,9 +221,9 @@ final class WaterSurface {
                 // circular outline that could be mistaken for a travelling wave.
                 let pocketRadius = radius + CGFloat(contact.width * 0.55 + 0.035) * 256
                 let pocketCenter = CGPoint(x: 0, y: 256 / region.height / 0.8)
-                let colors = [CGColor(red: 0.23, green: 0.39, blue: 0.43, alpha: 0.52),
-                              CGColor(red: 0.23, green: 0.39, blue: 0.43, alpha: 0.38),
-                              CGColor(red: 0.23, green: 0.39, blue: 0.43, alpha: 0)]
+                let colors = [WaterAppearance.color(0.23, 0.39, 0.43, 0.52, level: dirtLevel),
+                              WaterAppearance.color(0.23, 0.39, 0.43, 0.38, level: dirtLevel),
+                              WaterAppearance.color(0.23, 0.39, 0.43, 0, level: dirtLevel)]
                 let shade = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(),
                     colors: colors as CFArray, locations: [0, 0.52, 1])!
                 canvas.setAlpha(gain)
@@ -243,7 +248,7 @@ final class WaterSurface {
                 if ripple.isDrop {
                     for (start, end, seed) in [(0.16, 2.91, 3.0), (3.32, 6.05, 8.0)] {
                         Self.arc(on: canvas, center: center, radius: CGFloat(ripple.radius) * 256,
-                                 start: start, end: end, width: 2, seed: seed)
+                                 start: start, end: end, width: 2, seed: seed, dirtLevel: dirtLevel)
                     }
                 } else {
                     ring(on: canvas, ripple: ripple)

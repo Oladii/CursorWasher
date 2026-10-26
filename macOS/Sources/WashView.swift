@@ -4,22 +4,141 @@ import OSLog
 final class WashView: NSView {
     override var isFlipped: Bool { false }
     override var isOpaque: Bool { false }
-    var bucketImage: NSImage? { didSet { rebuildWaterSurface() } }
+    var bucketImage: NSImage? { didSet {
+        basin = bucketImage.map { BucketBasin(bucket: $0) }
+        rebuildWaterSurface()
+    } }
     var paintsWaterCrests = true
     var waterImage: NSImage? { didSet { rebuildWaterSurface() } }
     var waterHighlights: NSImage? { didSet { rebuildWaterSurface() } }
+    var waterDirtAmount: Double = 0 { didSet {
+        waterDirtAmount = waterDirtAmount.isFinite ? min(Double(WaterAppearance.maximumLevel), max(0, waterDirtAmount)) : 0
+        if oldValue != waterDirtAmount { needsDisplay = true }
+    } }
+    var waterDirtLevel: Int {
+        get { Int(floor(waterDirtAmount)) }
+        set { waterDirtAmount = Double(newValue) }
+    }
+    var foamFrame = FoamFrame() { didSet { needsDisplay = true } }
 
     private func rebuildWaterSurface() {
-        waterSurface = (waterImage ?? bucketImage).flatMap { source in
-            waterHighlights.flatMap { WaterSurface(image: source, highlights: $0) }
-        }
-        if waterImage != nil && waterHighlights != nil && waterSurface == nil {
+        surfaces.removeAll()
+        calmFrames.removeAll()
+        mixedCalm = nil
+        soapWaves.removeAll()
+        if waterImage != nil && waterHighlights != nil && surface(at: waterDirtLevel) == nil {
             Logger(subsystem: Bundle.main.bundleIdentifier ?? "CursorWasher", category: "water")
                 .error("Water surface unavailable; drawing the original calm image")
         }
         needsDisplay = true
     }
-    private var waterSurface: WaterSurface?
+    private var basin: BucketBasin?
+    var bucketFrontPath: CGPath? { basin?.frontPath }
+    private var surfaces: [Int: WaterSurface] = [:]
+    private var calmFrames: [Int: CGImage] = [:]
+    private var mixedCalm: (amount: Double, image: CGImage)?
+    private var soapWaves: [Int: WaterSurface] = [:]
+    private var soapTints: [Int: CGImage] = [:]
+    private var mixedSoapTint: (amount: Double, image: CGImage)?
+    private static let transparentSoap: NSImage = {
+        let canvas = CGContext(data: nil, width: 1254, height: 1254, bitsPerComponent: 8,
+            bytesPerRow: 1254 * 4, space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+        return NSImage(cgImage: canvas.makeImage()!, size: CGSize(width: 1254, height: 1254))
+    }()
+
+    private func soapWave(at level: Int) -> WaterSurface? {
+        if let cached = soapWaves[level] { return cached }
+        guard let highlights = waterHighlights,
+              let result = WaterSurface(image: Self.transparentSoap, highlights: highlights, dirtLevel: level) else { return nil }
+        soapWaves[level] = result
+        return result
+    }
+
+    private func soapTint(_ amount: Double, base: CGImage) -> CGImage {
+        guard amount > 0 else { return base }
+        if let cached = mixedSoapTint, cached.amount == amount { return cached.image }
+        let lower = Int(floor(amount)), upper = Int(ceil(amount))
+        for level in Set([lower, upper]) where soapTints[level] == nil {
+            soapTints[level] = level == 0 ? base : WaterAppearance.tint(base, level: level)
+        }
+        guard let a = soapTints[lower], let b = soapTints[upper] else { return base }
+        let image = lower == upper ? a : WaterAppearance.mix(a, b, progress: CGFloat(amount - Double(lower)))
+        mixedSoapTint = (amount, image)
+        return image
+    }
+
+    private func drawSoapWater(base: CGImage, in context: CGContext) {
+        guard let basin = basin else { return }
+        context.saveGState()
+        context.addPath(basin.waterPath)
+        context.clip()
+        basin.clipOpening(in: context, protectingInk: true)
+        // Preserve the approved Figma water's own alpha rather than blending
+        // the canonical bucket's water underneath its translucent painting.
+        context.setBlendMode(.copy)
+        context.draw(base, in: BucketLayout.imageRect)
+        context.setBlendMode(.normal)
+        if waterDirtAmount > 0 {
+            context.draw(soapTint(waterDirtAmount, base: base), in: BucketLayout.imageRect)
+        }
+        context.restoreGState()
+        let lower = Int(floor(waterDirtAmount)), upper = Int(ceil(waterDirtAmount))
+        guard let low = soapWave(at: lower) else { return }
+        let impulses = animationFrame?.waterImpulses ?? []
+        let first = low.frame(impulses: impulses, paintCrests: paintsWaterCrests)
+        let image: CGImage
+        if lower != upper, let high = soapWave(at: upper) {
+            image = WaterAppearance.mix(first, high.frame(impulses: impulses, paintCrests: paintsWaterCrests),
+                progress: CGFloat(waterDirtAmount - Double(lower)))
+        } else { image = first }
+        context.saveGState()
+        context.addPath(basin.waterPath)
+        context.clip()
+        basin.clipOpening(in: context, protectingInk: true)
+        context.draw(image, in: BucketLayout.waterTextureRect)
+        context.restoreGState()
+    }
+
+    private func surface(at level: Int) -> WaterSurface? {
+        if let cached = surfaces[level] { return cached }
+        guard let source = waterImage ?? bucketImage, let highlights = waterHighlights,
+              let surface = WaterSurface(image: source, highlights: highlights, dirtLevel: level) else { return nil }
+        surfaces[level] = surface
+        calmFrames[level] = surface.frame(impulses: [])
+        return surface
+    }
+
+    private func drawWater(in context: CGContext) {
+        let lower = Int(floor(waterDirtAmount)), upper = Int(ceil(waterDirtAmount))
+        guard let low = surface(at: lower), let lowCalm = calmFrames[lower] else { return }
+        let impulses = animationFrame?.waterImpulses ?? []
+        let first = low.frame(impulses: impulses, paintCrests: paintsWaterCrests)
+        let image: CGImage, baseline: CGImage
+        if lower != upper, let high = surface(at: upper), let highCalm = calmFrames[upper] {
+            let progress = CGFloat(waterDirtAmount - Double(lower))
+            if let cached = mixedCalm, cached.amount == waterDirtAmount {
+                baseline = cached.image
+            } else {
+                baseline = WaterAppearance.mix(lowCalm, highCalm, progress: progress)
+                mixedCalm = (waterDirtAmount, baseline)
+            }
+            let second = high.frame(impulses: impulses, paintCrests: paintsWaterCrests)
+            image = first === lowCalm && second === highCalm ? baseline
+                : WaterAppearance.mix(first, second, progress: progress)
+        } else {
+            image = first
+            baseline = lowCalm
+        }
+        if let basin = basin {
+            basin.drawWater(image, baseline: baseline, in: context)
+        } else {
+            context.saveGState()
+            WaterSurface.path.addClip()
+            context.draw(image, in: BucketLayout.waterTextureRect)
+            context.restoreGState()
+        }
+    }
     var bucketHitMap: BucketHitMap?
     var onWash: ((CGPoint, NSEvent) -> Void)?
     var onAccessibleWash: (() -> Bool)?
@@ -84,14 +203,24 @@ final class WashView: NSView {
         NSColor.clear.setFill()
         dirtyRect.fill(using: .copy)
         NSGraphicsContext.current?.imageInterpolation = .high
+        let soapBase = foamFrame.clusters.isEmpty ? nil : FoamSurface.baseImage
         bucketImage?.draw(in: BucketLayout.imageRect, from: .zero, operation: .sourceOver, fraction: 1)
-        if let surface = waterSurface {
-            surface.draw(impulses: animationFrame?.waterImpulses ?? [], paintCrests: paintsWaterCrests)
-        } else {
-            NSGraphicsContext.saveGraphicsState()
-            WaterSurface.path.addClip()
-            waterImage?.draw(in: BucketLayout.imageRect, from: .zero, operation: .copy, fraction: 1)
-            NSGraphicsContext.restoreGraphicsState()
+        if let context = NSGraphicsContext.current?.cgContext {
+            if let base = soapBase {
+                FoamSurface.prefetch(foamFrame, foregroundAt: animationFrame?.waterline)
+                drawSoapWater(base: base, in: context)
+                basin?.drawFront(in: context)
+                if let frame = animationFrame, let splash = frame.splash {
+                    context.saveGState()
+                    basin?.clipOpening(in: context, protectingInk: true)
+                    drawSplash(progress: splash, origin: frame.splashOrigin ?? BucketLayout.landing)
+                    context.restoreGState()
+                }
+                FoamSurface.draw(foamFrame, in: context)
+            } else {
+                drawWater(in: context)
+                basin?.drawFront(in: context)
+            }
         }
         if recovery {
             NSColor.systemRed.setFill()
@@ -100,7 +229,7 @@ final class WashView: NSView {
         }
         // The transformed cursor uses a passive window throughout the animation.
         guard let frame = animationFrame else { return }
-        if let splash = frame.splash { drawSplash(progress: splash, origin: frame.splashOrigin ?? CGPoint(x: BucketLayout.water.midX, y: BucketLayout.water.minY)) }
+        if soapBase == nil, let splash = frame.splash { drawSplash(progress: splash, origin: frame.splashOrigin ?? CGPoint(x: BucketLayout.water.midX, y: BucketLayout.water.minY)) }
     }
 
     private func drawSplash(progress: Double, origin: CGPoint) {

@@ -37,6 +37,7 @@ fi
 cp "$project_root/Resources/bucket-dry.png" "$app_dir/Contents/Resources/bucket.png"
 cp "$project_root/Resources/water-calm-source.png" "$app_dir/Contents/Resources/water-calm-source.png"
 cp "$project_root/Resources/water-highlights-source.png" "$app_dir/Contents/Resources/water-highlights-source.png"
+cp -R "$project_root/Resources/Foam" "$app_dir/Contents/Resources/Foam"
 iconset_dir="$stage_dir/AppIcon.iconset"
 mkdir -p "$iconset_dir"
 for size in 16 32 128 256 512; do
@@ -73,5 +74,6 @@ done
 for resource in bucket.png water-calm-source.png water-highlights-source.png app-icon.icns; do
   test -s "$app_dir/Contents/Resources/$resource"
 done
+python3 "$project_root/scripts/validate-approved-foam.py" "$app_dir/Contents/Resources/Foam"
 python3 "$project_root/scripts/replace-build.py" "$app_dir" "$output_dir/CursorWasher.app"
 printf 'Built: %s\n' "$output_dir/CursorWasher.app"
